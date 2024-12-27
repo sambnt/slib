@@ -1,0 +1,8 @@
+# Configuration for haskell-language-server.
+
+cradle:
+  cabal:
+    - path: "./src"
+      component: "lib:slib"
+    - path: "./test"
+      component: "slib:unit"

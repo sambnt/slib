@@ -1,0 +1,29 @@
+index-state: 2024-04-29T00:00:00Z
+with-compiler: ghc-9.8.2
+
+packages:
+    ./.
+
+tests: true
+
+package postgresql-libpq
+  flags: +use-pkg-config
+
+source-repository-package
+    type: git
+    location: https://github.com/jfischoff/tmp-postgres
+    tag: 7f2467a6d6d5f6db7eed59919a6773fe006cf22b
+    --sha256: 0l1gdx5s8ximgawd3yzfy47pv5pgwqmjqp8hx5rbrq68vr04wkbl
+
+source-repository-package
+    type: git
+    location: https://github.com/brendanhay/amazonka.git
+    tag: 30b200d487bccd2568de1257a812a464270d0096
+    --sha256: 09wdcmmsynzipkinj40d6c2yp8hvlsq30xrrnsiplz584ckyg0i8
+    subdir:
+      lib/amazonka-core
+      lib/amazonka
+      lib/services/amazonka-sts
+      lib/services/amazonka-ssm
+      lib/services/amazonka-sso
+      lib/services/amazonka-s3

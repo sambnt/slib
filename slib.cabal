@@ -1,0 +1,188 @@
+cabal-version:      3.0
+name:               slib
+version:            0.1.0.0
+license-file:       LICENSE
+
+extra-source-files:
+    README.md
+
+common project-config
+  default-language:     Haskell2010
+  default-extensions:   OverloadedStrings
+
+  ghc-options:          -Wall
+                        -Wcompat
+                        -Wincomplete-record-updates
+                        -Wincomplete-uni-patterns
+                        -Wpartial-fields
+                        -Wredundant-constraints
+                        -Wunused-packages
+
+library
+  import:           project-config
+  build-depends:    base >=4.7 && <5
+                  , aeson
+                  , amazonka
+                  , amazonka-ssm
+                  , async
+                  , base64-bytestring
+                  , binary
+                  , bitmap
+                  , bytestring
+                  , bytestring
+                  , chronos
+                  , containers
+                  , cookie
+                  , cryptohash-sha256
+                  , crypton
+                  , dani-servant-lucid2
+                  , derive-storable
+                  , directory
+                  , esqueleto
+                  , filepath
+                  , free
+                  , hoauth2
+                  , http-api-data
+                  , http-client
+                  , http-client-tls
+                  , http-types
+                  , jose
+                  , lens
+                  , linear
+                  , lucid2
+                  , megaparsec
+                  , mmorph
+                  , monad-logger
+                  , monad-time
+                  , mtl
+                  , network-uri
+                  , optparse-applicative
+                  , parser-combinators
+                  , persistent
+                  , persistent-postgresql
+                  , persistent-sqlite
+                  , postgresql-simple
+                  , resource-pool
+                  , resourcet
+                  , rosezipper
+                  , safe-exceptions
+                  , servant
+                  , servant-client
+                  , servant-server
+                  , stb-image
+                  , stm
+                  , text
+                  , time
+                  , tmp-postgres
+                  , topograph
+                  , torsor
+                  , unliftio
+                  , unordered-containers
+                  , uri-bytestring
+                  , utf8-string
+                  , vector
+                  , wai
+                  , warp
+  hs-source-dirs:   src
+  default-language: Haskell2010
+  exposed-modules:
+                    Sam.Auth.Api
+                    Sam.Auth.App
+                    Sam.Auth.Config.JWT
+                    Sam.Auth.Config.OAuth
+                    Sam.Auth.Config.SSM
+                    Sam.Auth.Config.Session
+                    Sam.Auth.Database.Schema
+                    Sam.Auth.JWT
+                    Sam.Auth.JWT.Types
+                    Sam.Auth.OAuth
+                    Sam.Auth.Session
+                    Sam.Auth.Session.Cookies
+                    Sam.Auth.Session.Types
+                    Sam.Util.Postgres
+                    Sam.Util.URI
+
+test-suite unit
+    if impl(ghcjs) || arch(javascript)
+      buildable: False
+    ghc-options:      -Wall -threaded
+    build-depends:    base
+                    , aeson
+                    , async
+                    , base64-bytestring
+                    , binary
+                    , bitmap
+                    , bytestring
+                    , chronos
+                    , containers
+                    , cookie
+                    , crypton
+                    , dani-servant-lucid2
+                    , derive-storable
+                    , directory
+                    , esqueleto
+                    , filepath
+                    , free
+                    , hedgehog
+                    , hoauth2
+                    , hspec
+                    , hspec-hedgehog
+                    , hspec-wai
+                    , hedgehog
+                    , tasty
+                    , tasty-discover
+                    , tasty-hedgehog
+                    , tasty-quickcheck
+                    , http-api-data
+                    , http-client
+                    , http-client-tls
+                    , http-types
+                    , jose
+                    , lens
+                    , monad-control
+                    , linear
+                    , lucid2
+                    , megaparsec
+                    , mmorph
+                    , monad-logger
+                    , monad-time
+                    , mtl
+                    , network-uri
+                    , optparse-applicative
+                    , parser-combinators
+                    , persistent
+                    , persistent-sqlite
+                    , persistent-postgresql
+                    , postgresql-simple
+                    , resourcet
+                    , rosezipper
+                    , safe-exceptions
+                    , servant
+                    , cryptohash-sha256
+                    , servant-client
+                    , servant-server
+                    , slib
+                    , stb-image
+                    , stm
+                    , text
+                    , time
+                    , topograph
+                    , transformers-base
+                    , lifted-base
+                    , transformers
+                    , resource-pool
+                    , torsor
+                    , unliftio
+                    , unordered-containers
+                    , uri-bytestring
+                    , utf8-string
+                    , vector
+                    , tmp-postgres
+                    , wai
+                    , warp
+    hs-source-dirs:   test
+    default-language: Haskell2010
+    -- build-tool-depends: tasty-discover:tasty-discover
+    build-tool-depends: hspec-discover:hspec-discover -any
+    main-is:          Main.hs
+    type:             exitcode-stdio-1.0
