@@ -102,6 +102,76 @@ library
                     Sam.Util.Postgres
                     Sam.Util.URI
 
+executable example-auth
+    import:           project-config
+    build-depends:    base >=4.7 && <5
+                    , aeson
+                    , amazonka
+                    , amazonka-ssm
+                    , async
+                    , base64-bytestring
+                    , binary
+                    , bitmap
+                    , bytestring
+                    , bytestring
+                    , chronos
+                    , containers
+                    , cookie
+                    , cryptohash-sha256
+                    , crypton
+                    , dani-servant-lucid2
+                    , derive-storable
+                    , directory
+                    , esqueleto
+                    , filepath
+                    , free
+                    , hoauth2
+                    , http-api-data
+                    , http-client
+                    , http-client-tls
+                    , http-types
+                    , jose
+                    , lens
+                    , linear
+                    , lucid2
+                    , megaparsec
+                    , mmorph
+                    , monad-logger
+                    , monad-time
+                    , mtl
+                    , network-uri
+                    , optparse-applicative
+                    , parser-combinators
+                    , persistent
+                    , persistent-postgresql
+                    , persistent-sqlite
+                    , postgresql-simple
+                    , resource-pool
+                    , resourcet
+                    , rosezipper
+                    , safe-exceptions
+                    , servant
+                    , servant-client
+                    , servant-server
+                    , slib
+                    , stb-image
+                    , stm
+                    , text
+                    , time
+                    , tmp-postgres
+                    , topograph
+                    , torsor
+                    , unliftio
+                    , unordered-containers
+                    , uri-bytestring
+                    , utf8-string
+                    , vector
+                    , wai
+                    , warp
+    hs-source-dirs:   examples
+    default-language: Haskell2010
+    main-is:  Auth.hs
+
 test-suite unit
     if impl(ghcjs) || arch(javascript)
       buildable: False
