@@ -22,6 +22,8 @@ import Hedgehog (
  )
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
+import Database.Persist.Postgresql (withPostgresqlPool, SqlBackend)
+import Control.Monad.Logger (runNoLoggingT)
 import Sam.Auth.Database.Schema qualified as Db
 import Sam.Auth.JWT.Types (UserClaims (..), emptyUserClaims)
 import Sam.Auth.Session (mkSessionStoreDb)
@@ -45,6 +47,10 @@ import Sam.Util.Postgres (
 import Test.Hspec (Spec, aroundAll, describe, it)
 import Test.Hspec.Hedgehog (hedgehog)
 import Torsor qualified
+import Control.Monad.Trans.Resource (MonadUnliftIO)
+import Control.Exception.Safe (MonadMask)
+import Data.Pool (Pool)
+import Control.Monad.Morph (lift)
 
 -- act :: Applicative f => a -> f a
 -- act = pure
@@ -72,9 +78,18 @@ genUTCTime' = genUTCTime $ Range.linearFrac 0 2734487041
 genTime :: Gen Time
 genTime = Chronos.Time <$> Gen.integral Range.linearBounded
 
+withDatabase
+  :: ( MonadMask m
+     , MonadUnliftIO m
+     )
+  => (Pool SqlBackend -> m a)
+  -> m a
+withDatabase f = withTemporaryDatabase Db.migrateAll $ \conn ->
+  runNoLoggingT $ withPostgresqlPool conn 3 (lift . f)
+
 spec :: Spec
 spec = do
-  aroundAll (withTemporaryDatabase Db.migrateAll) $ do
+  aroundAll withDatabase $ do
     describe "SessionStore" $ do
       it "Re-using a session ID to create a new session fails" $ \pool -> do
         arrange (inTransaction pool) $ do

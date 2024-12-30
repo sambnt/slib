@@ -32,6 +32,8 @@ module Main where
 
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (ReaderT)
+import Database.Persist.Postgresql (withPostgresqlPool)
+import Control.Monad.Logger (runStdoutLoggingT)
 import Data.Pool (Pool)
 import Data.String (fromString)
 import Database.Persist.Sql (SqlBackend, runSqlPool)
@@ -191,5 +193,7 @@ main = do
   sessionCookies <- mkSessionCookies cfgSession
   let oauth = mkOAuth cfgOAuth manager
 
-  withTemporaryDatabase Db.migrateAll $ \pool ->
-    liftIO $ run 8082 $ app oauth sessionCookies jwks pool
+  withTemporaryDatabase Db.migrateAll $ \conn ->
+    runStdoutLoggingT $
+      withPostgresqlPool conn 3 $ \pool -> do
+        liftIO $ run 8082 $ app oauth sessionCookies jwks pool

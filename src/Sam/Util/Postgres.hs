@@ -12,9 +12,9 @@ module Sam.Util.Postgres (
   abort,
 ) where
 
-import Control.Exception.Safe (MonadMask, bracket_, throwIO)
+import Control.Exception.Safe (MonadMask, bracket_, throwIO, bracket)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Logger (runNoLoggingT, runStdoutLoggingT)
+import Control.Monad.Logger (runStdoutLoggingT)
 import Control.Monad.Reader (ReaderT)
 import Control.Monad.Trans.Resource (MonadUnliftIO)
 import Crypto.Hash.SHA256 qualified as SHA256
@@ -24,6 +24,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Database.Persist.Postgresql (
   Migration,
+  ConnectionString,
   SqlBackend,
   rawExecute,
   runMigration,
@@ -31,7 +32,6 @@ import Database.Persist.Postgresql (
   runSqlPool,
   showMigration,
   withPostgresqlConn,
-  withPostgresqlPool,
  )
 import Database.Postgres.Temp qualified as Temp
 
@@ -55,25 +55,53 @@ abort =
 --
 -- The database setup (slow) will only happen once for each database schema.
 -- That is, the database schema is cached.
-withTemporaryDatabase :: Migration -> (Pool SqlBackend -> IO a) -> IO a
+withTemporaryDatabase
+  :: ( MonadMask m
+     , MonadIO m
+     )
+  => Migration
+  -> (ConnectionString -> m a)
+  -> m a
 withTemporaryDatabase migration f = do
   -- Helper to throw exceptions
-  let throwE x = either throwIO pure =<< x
+  let throwE x = either (liftIO . throwIO) pure =<< x
 
-  throwE $ Temp.withDbCache $ \dbCache -> do
+  throwE $ withDbCacheConfig Temp.defaultCacheConfig $ \dbCache -> do
     let
       combinedConfig = Temp.defaultConfig <> Temp.cacheConfig dbCache
-    hash <- getMigrationHash migration
+    hash <- liftIO $ getMigrationHash migration
     migratedConfig <-
-      throwE $
+      liftIO $ throwE $
         Temp.cacheAction
           ("~/.tmp-postgres/" <> hash)
           (migrateDb hash migration)
           combinedConfig
-    Temp.withConfig migratedConfig $ \db ->
-      runNoLoggingT $
-        withPostgresqlPool (Temp.toConnectionString db) 2 $ \pool ->
-          liftIO $ f pool
+    withConfig migratedConfig $ \db ->
+      f (Temp.toConnectionString db)
+
+withConfig
+  :: (MonadMask m, MonadIO m)
+  => Temp.Config
+  -> (Temp.DB -> m b)
+  -> m (Either Temp.StartError b)
+withConfig extra f =
+  bracket
+  (liftIO $ Temp.startConfig extra)
+  (either (const $ pure ()) (liftIO . Temp.stop))
+  $ either (pure . Left) (fmap Right . f)
+
+withDbCacheConfig
+  :: (MonadMask m, MonadIO m)
+  => Temp.CacheConfig
+  -- ^ Configuration
+  -> (Temp.Cache -> m a)
+  -- ^ action for which caching is enabled
+  -> m a
+withDbCacheConfig config =
+  bracket
+    (liftIO $ Temp.setupInitDbCache config)
+    (liftIO . Temp.cleanupInitDbCache)
+
 
 migrateDb :: String -> Migration -> Temp.DB -> IO ()
 migrateDb hash migration db = do

@@ -53,7 +53,6 @@ import Servant (
   Handler,
   Header,
   Proxy (Proxy),
-  Server,
   err302,
   err404,
   err500,
@@ -64,7 +63,6 @@ import Servant (
  )
 import Servant.API (
   AuthProtect,
-  NamedRoutes,
   QueryParam',
   Required,
   Strict,

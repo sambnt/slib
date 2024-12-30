@@ -21,6 +21,8 @@ import Sam.Auth.OAuth (OAuth, mkOAuth)
 import Sam.Auth.Session.Cookies (SessionCookies, mkSessionCookies)
 import Sam.Util.Postgres (withTemporaryDatabase)
 import Servant (Context (EmptyContext, (:.)))
+import Database.Persist.Postgresql (withPostgresqlPool)
+import Control.Monad.Logger (runStdoutLoggingT)
 import Servant.Server.Experimental.Auth (AuthHandler)
 import Servant.Server.Generic (genericServeTWithContext)
 
@@ -52,11 +54,13 @@ runApp cfgOAuth cfgJWT cfgSession = do
   -- setting too. Maybe accept 'ENV' environment variable, to differentiate
   -- between local and production contexts. Or, if user hasn't provided
   -- PGCONNSTR, then use temporary database.
-  withTemporaryDatabase Db.migrateAll $ \pool ->
-    liftIO $
-      run 8082 $
-        logRequestHeaders $
-          app oauth sessionCookies jwks pool
+  withTemporaryDatabase Db.migrateAll $ \conn ->
+    runStdoutLoggingT $
+      withPostgresqlPool conn 3 $ \pool -> do
+        liftIO $
+          run 8082 $
+            logRequestHeaders $
+              app oauth sessionCookies jwks pool
 
 main :: IO ()
 main = do
