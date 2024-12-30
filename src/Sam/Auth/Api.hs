@@ -68,6 +68,8 @@ import Servant.API (
   QueryParam',
   Required,
   Strict,
+  ToServantApi,
+  genericApi,
   (:-),
  )
 import Servant.API.ContentTypes.Lucid (HTML)
@@ -77,6 +79,7 @@ import Servant.Server.Experimental.Auth (
   AuthServerData,
   mkAuthHandler,
  )
+import Servant.Server.Generic (AsServer)
 import Web.Cookie (parseCookies, renderSetCookieBS)
 
 -- TODO: Test redirects
@@ -84,9 +87,7 @@ import Web.Cookie (parseCookies, renderSetCookieBS)
 
 type OAuthCode = Text
 
-type AuthAPI = NamedRoutes AuthAPI'
-
-data AuthAPI' mode = AuthAPI'
+data AuthRoutes mode = AuthRoutes
   { callback
       :: mode
         :- "auth"
@@ -111,17 +112,17 @@ data AuthAPI' mode = AuthAPI'
 
 type instance AuthServerData (AuthProtect "cookie-auth") = UserClaims
 
-api :: Proxy AuthAPI
-api = Proxy
+api :: Proxy (ToServantApi AuthRoutes)
+api = genericApi (Proxy :: Proxy AuthRoutes)
 
 apiServer
   :: OAuth
   -> SessionCookies (ReaderT SqlBackend IO)
   -> JWKSCache
   -> Pool SqlBackend
-  -> Server AuthAPI
+  -> AuthRoutes AsServer
 apiServer oauth sessions jwks pool =
-  AuthAPI'
+  AuthRoutes
     { callback = callbackHandler oauth sessions jwks pool
     , logout = logoutHandler oauth sessions pool
     , login = loginHandler oauth sessions pool

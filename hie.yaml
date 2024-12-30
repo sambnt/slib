@@ -4,7 +4,7 @@ cradle:
   cabal:
     - path: "./src"
       component: "lib:slib"
-    - path: "./executable/Auth.hs"
+    - path: "./examples/Auth.hs"
       component: "exe:example-auth"
     - path: "./test"
       component: "slib:unit"

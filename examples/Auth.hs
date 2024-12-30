@@ -1,10 +1,10 @@
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeOperators #-}
 
-{- |
+{-|
 Module                  : Main
 Copyright               : (c) 2024-2025 Samuel Evans-Powell
 SPDX-License-Identifier : MPL-2.0
@@ -28,66 +28,104 @@ export SESSION_TIMEOUT_SECONDS_ABSOLUTE="7200"
 export SESSION_TIMEOUT_SECONDS_IDLE="1800"
 export SESSION_INSECURE="true"
 -}
-
 module Main where
 
-import Sam.Auth.Api (AuthAPI)
-import qualified Sam.Auth.Api as Auth
-import qualified Sam.Auth.Database.Schema as Db
-import Control.Monad.Reader (ReaderT)
-import Servant.API.ContentTypes.Lucid (HTML)
 import Control.Monad.IO.Class (liftIO)
-import Network.HTTP.Client.TLS (newTlsManagerWith, tlsManagerSettings)
-import Network.Wai (Request, Application)
-import Network.Wai.Handler.Warp (run)
-import Sam.Auth.JWT (mkJWKSCache, JWKSCache)
-import Sam.Auth.JWT.Types (UserClaims)
-import Sam.Auth.OAuth (mkOAuth, OAuth)
-import Sam.Auth.Session.Cookies (mkSessionCookies, SessionCookies)
-import Sam.Util.Postgres (withTemporaryDatabase)
-import Servant (serveWithContext, Context (EmptyContext, (:.)))
-import Servant.Server.Experimental.Auth (AuthHandler)
+import Control.Monad.Reader (ReaderT)
 import Data.Pool (Pool)
+import Data.String (fromString)
 import Database.Persist.Sql (SqlBackend, runSqlPool)
+import GHC.Generics (Generic)
+import Lucid (
+  Html,
+  a_,
+  body_,
+  charset_,
+  content_,
+  doctype_,
+  h1_,
+  head_,
+  header_,
+  href_,
+  html_,
+  main_,
+  meta_,
+  name_,
+  p_,
+  title_,
+ )
+import Network.HTTP.Client.TLS (newTlsManagerWith, tlsManagerSettings)
+import Network.Wai (Application, Request)
+import Network.Wai.Handler.Warp (run)
+import Sam.Auth.Api (AuthRoutes (..))
+import Sam.Auth.Api qualified as Auth
 import Sam.Auth.Config.JWT (envConfigJWT)
 import Sam.Auth.Config.OAuth (envConfigOAuth)
 import Sam.Auth.Config.Session (envConfigSession)
-import Sam.Auth.Session.Cookies (Cookies(..), getUser)
-import Sam.Auth.Session.Types (SessionResult(SessionFound))
-import Servant ((:>), Header, Get, Handler, Proxy(Proxy))
-import Servant.API (AuthProtect, (:-), NamedRoutes)
-import GHC.Generics (Generic)
-import Lucid (Html, a_, href_, p_, html_, head_, title_, body_, h1_, header_, main_, doctype_, meta_, charset_, name_, content_)
-import Data.String (fromString)
+import Sam.Auth.Database.Schema qualified as Db
+import Sam.Auth.JWT (JWKSCache, mkJWKSCache)
+import Sam.Auth.JWT.Types (UserClaims)
+import Sam.Auth.OAuth (OAuth, mkOAuth)
+import Sam.Auth.Session.Cookies (
+  Cookies (..),
+  SessionCookies,
+  getUser,
+  mkSessionCookies,
+ )
+import Sam.Auth.Session.Types (SessionResult (SessionFound))
+import Sam.Util.Postgres (withTemporaryDatabase)
+import Servant (
+  Context (EmptyContext, (:.)),
+  Get,
+  Handler,
+  Header,
+  Proxy (Proxy),
+  (:>),
+ )
+import Servant.API (AuthProtect, NamedRoutes, ToServantApi, genericApi, (:-))
+import Servant.API.ContentTypes.Lucid (HTML)
+import Servant.Server.Experimental.Auth (AuthHandler)
+import Servant.Server.Generic (AsServer, genericServeTWithContext)
 
-type API = NamedRoutes API'
-
-data API' mode = API'
-  { authAPI :: mode :- AuthAPI
-  , publicAPI :: mode :- NamedRoutes PublicAPI
-  , protectedAPI :: mode :- AuthProtect "cookie-auth" :> NamedRoutes ProtectedAPI
+data Routes mode = Routes
+  { authRoutes :: mode :- NamedRoutes AuthRoutes
+  , publicRoutes :: mode :- NamedRoutes PublicRoutes
+  , protectedRoutes
+      :: mode :- AuthProtect "cookie-auth" :> NamedRoutes ProtectedRoutes
   }
-  deriving Generic
+  deriving (Generic)
 
-data PublicAPI mode = PublicAPI
+data PublicRoutes mode = PublicRoutes
   { home :: mode :- Header "Cookie" Cookies :> Get '[HTML] (Html ())
   }
-  deriving Generic
+  deriving (Generic)
 
-data ProtectedAPI mode = ProtectedAPI
-  { treasure :: mode :- "treasure" :> Get '[HTML] (Html())
+data ProtectedRoutes mode = ProtectedRoutes
+  { treasure :: mode :- "treasure" :> Get '[HTML] (Html ())
   }
-  deriving Generic
+  deriving (Generic)
 
+apiServer
+  :: OAuth
+  -> SessionCookies (ReaderT SqlBackend IO)
+  -> JWKSCache
+  -> Pool SqlBackend
+  -> Routes AsServer
 apiServer oauth sessions jwks pool =
-  API' { authAPI = Auth.apiServer oauth sessions jwks pool
-       , publicAPI =
-           PublicAPI { home = homeHandler pool sessions
-                     }
-       , protectedAPI = \usr ->
-             ProtectedAPI { treasure = treasureHandler pool usr
-                          }
-       }
+  Routes
+    { authRoutes = Auth.apiServer oauth sessions jwks pool
+    , publicRoutes =
+        PublicRoutes
+          { home = homeHandler pool sessions
+          }
+    , protectedRoutes = \usr ->
+        ProtectedRoutes
+          { treasure = treasureHandler pool usr
+          }
+    }
+
+api :: Proxy (ToServantApi Routes)
+api = genericApi (Proxy :: Proxy Routes)
 
 homeHandler
   :: Pool SqlBackend
@@ -136,22 +174,22 @@ app oauth sessionCookies jwks pool = do
     ctx :: Context (AuthHandler Request UserClaims ': '[])
     ctx = Auth.authHandler oauth sessionCookies pool :. EmptyContext
 
-  serveWithContext
-    (Proxy @API)
-    ctx
+  genericServeTWithContext
+    id
     (apiServer oauth sessionCookies jwks pool)
+    ctx
 
 main :: IO ()
 main = do
-  cfgOAuth   <- envConfigOAuth
-  cfgJWT     <- envConfigJWT
+  cfgOAuth <- envConfigOAuth
+  cfgJWT <- envConfigJWT
   cfgSession <- envConfigSession
 
-  manager        <- newTlsManagerWith tlsManagerSettings
+  manager <- newTlsManagerWith tlsManagerSettings
 
-  jwks           <- mkJWKSCache cfgJWT manager
+  jwks <- mkJWKSCache cfgJWT manager
   sessionCookies <- mkSessionCookies cfgSession
-  let oauth       = mkOAuth cfgOAuth manager
+  let oauth = mkOAuth cfgOAuth manager
 
   withTemporaryDatabase Db.migrateAll $ \pool ->
     liftIO $ run 8082 $ app oauth sessionCookies jwks pool

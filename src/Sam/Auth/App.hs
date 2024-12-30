@@ -10,7 +10,7 @@ import Database.Persist.Sql (SqlBackend)
 import Network.HTTP.Client.TLS (newTlsManagerWith, tlsManagerSettings)
 import Network.Wai (Application, Request, requestHeaders)
 import Network.Wai.Handler.Warp (run)
-import Sam.Auth.Api (api, apiServer, authHandler)
+import Sam.Auth.Api (apiServer, authHandler)
 import Sam.Auth.Config.JWT (ConfigJWT, envConfigJWT)
 import Sam.Auth.Config.OAuth (ConfigOAuth, envConfigOAuth)
 import Sam.Auth.Config.Session (ConfigSession, envConfigSession)
@@ -20,8 +20,9 @@ import Sam.Auth.JWT.Types (UserClaims)
 import Sam.Auth.OAuth (OAuth, mkOAuth)
 import Sam.Auth.Session.Cookies (SessionCookies, mkSessionCookies)
 import Sam.Util.Postgres (withTemporaryDatabase)
-import Servant (Context (EmptyContext, (:.)), serveWithContext)
+import Servant (Context (EmptyContext, (:.)))
 import Servant.Server.Experimental.Auth (AuthHandler)
+import Servant.Server.Generic (genericServeTWithContext)
 
 app
   :: OAuth
@@ -34,10 +35,10 @@ app oauth sessionCookies jwks pool = do
     ctx :: Context (AuthHandler Request UserClaims ': '[])
     ctx = authHandler oauth sessionCookies pool :. EmptyContext
 
-  serveWithContext
-    api
-    ctx
+  genericServeTWithContext
+    id
     (apiServer oauth sessionCookies jwks pool)
+    ctx
 
 runApp :: ConfigOAuth -> ConfigJWT -> ConfigSession -> IO ()
 runApp cfgOAuth cfgJWT cfgSession = do

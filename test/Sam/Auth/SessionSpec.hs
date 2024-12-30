@@ -22,7 +22,6 @@ import Hedgehog (
  )
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
-import Test.Hspec.Hedgehog    (hedgehog)
 import Sam.Auth.Database.Schema qualified as Db
 import Sam.Auth.JWT.Types (UserClaims (..), emptyUserClaims)
 import Sam.Auth.Session (mkSessionStoreDb)
@@ -44,6 +43,7 @@ import Sam.Util.Postgres (
   withTemporaryDatabase,
  )
 import Test.Hspec (Spec, aroundAll, describe, it)
+import Test.Hspec.Hedgehog (hedgehog)
 import Torsor qualified
 
 -- act :: Applicative f => a -> f a
@@ -82,82 +82,110 @@ spec = do
           rawId <- forAll $ Gen.text (Range.singleton 64) Gen.unicodeAll
           act $ do
             let
-              cfg = SessionConfig (Torsor.scale 3 Chronos.second) (Torsor.scale 30 Chronos.second)
+              cfg =
+                SessionConfig (Torsor.scale 3 Chronos.second) (Torsor.scale 30 Chronos.second)
               store = mkSessionStoreDb
               anon = Anonymous Nothing "foo"
               sessionId = SessionId rawId
-              session1 = NewSession { newSessionId = sessionId
-                                    , newSessionCreatedAt = t
-                                    , newSessionData = anon
-                                    }
+              session1 =
+                NewSession
+                  { newSessionId = sessionId
+                  , newSessionCreatedAt = t
+                  , newSessionData = anon
+                  }
               session2 = session1
             session1Result <- newSession store cfg session1
             session2Result <- newSession store cfg session2
 
             assert $ do
-              session1Result === Just (
-                  SessionData sessionId (Torsor.add (Torsor.scale 3 Chronos.second) t) t anon
-                )
+              session1Result
+                === Just
+                  (SessionData sessionId (Torsor.add (Torsor.scale 3 Chronos.second) t) t anon)
               session2Result === Nothing
       it "Authenticating a session changes session ID" $ \pool -> do
         arrange (inTransaction pool) $ do
           t <- forAll genTime
           act $ do
             let
-              cfg = SessionConfig (Torsor.scale 3 Chronos.second) (Torsor.scale 30 Chronos.second)
+              cfg =
+                SessionConfig (Torsor.scale 3 Chronos.second) (Torsor.scale 30 Chronos.second)
               store = mkSessionStoreDb
               anon = Anonymous Nothing "foo"
               sessionId = SessionId "1"
-              session1 = NewSession { newSessionId = sessionId
-                                    , newSessionCreatedAt = t
-                                    , newSessionData = anon
-                                    }
+              session1 =
+                NewSession
+                  { newSessionId = sessionId
+                  , newSessionCreatedAt = t
+                  , newSessionData = anon
+                  }
               session2 = session1
-              auth = Authenticated $ emptyUserClaims { userClaimsSub = "1"
-                                                     }
+              auth =
+                Authenticated $
+                  emptyUserClaims
+                    { userClaimsSub = "1"
+                    }
             anonSession <- newSession store cfg session1
 
             authSession1 <-
               authenticateSession store cfg sessionId $
-                NewSession { newSessionId = sessionId
-                           , newSessionCreatedAt = t
-                           , newSessionData = auth
-                           }
+                NewSession
+                  { newSessionId = sessionId
+                  , newSessionCreatedAt = t
+                  , newSessionData = auth
+                  }
             authSession2 <-
               authenticateSession store cfg sessionId $
-                NewSession { newSessionId = SessionId "2"
-                           , newSessionCreatedAt = t
-                           , newSessionData = auth
-                           }
+                NewSession
+                  { newSessionId = SessionId "2"
+                  , newSessionCreatedAt = t
+                  , newSessionData = auth
+                  }
 
             assert $ do
               authSession1 === Nothing
-              authSession2 === Just (
-                  SessionFound $ SessionData (SessionId "2") (Torsor.add (Torsor.scale 3 Chronos.second) t) t auth
-                )
+              authSession2
+                === Just
+                  ( SessionFound $
+                      SessionData
+                        (SessionId "2")
+                        (Torsor.add (Torsor.scale 3 Chronos.second) t)
+                        t
+                        auth
+                  )
       it "Ending a session removes id from store" $ \pool -> do
         arrange (inTransaction pool) $ do
           t <- forAll genTime
           act $ do
             let
-              cfg = SessionConfig (Torsor.scale 3 Chronos.second) (Torsor.scale 30 Chronos.second)
+              cfg =
+                SessionConfig (Torsor.scale 3 Chronos.second) (Torsor.scale 30 Chronos.second)
               store = mkSessionStoreDb
               anon = Anonymous Nothing "foo"
               sessionId = SessionId "1"
-              session1 = NewSession { newSessionId = sessionId
-                                    , newSessionCreatedAt = t
-                                    , newSessionData = anon
-                                    }
+              session1 =
+                NewSession
+                  { newSessionId = sessionId
+                  , newSessionCreatedAt = t
+                  , newSessionData = anon
+                  }
               session2 = session1
-              auth = Authenticated $ emptyUserClaims { userClaimsSub = "1"
-                                                     }
+              auth =
+                Authenticated $
+                  emptyUserClaims
+                    { userClaimsSub = "1"
+                    }
             anonSession <- newSession store cfg session1
-            endSession store cfg $ EndSession { endSessionId = sessionId
-                                              , endSessionAt = t
-                                              }
-            sr <- getSession store cfg $ GetSession { getSessionId = sessionId
-                                                    , getSessionAt = t
-                                                    }
+            endSession store cfg $
+              EndSession
+                { endSessionId = sessionId
+                , endSessionAt = t
+                }
+            sr <-
+              getSession store cfg $
+                GetSession
+                  { getSessionId = sessionId
+                  , getSessionAt = t
+                  }
             assert $ do
               sr === SessionNotFound
       it "An ended session cannot be authenticated" $ \pool -> do
@@ -165,30 +193,42 @@ spec = do
           t <- forAll genTime
           act $ do
             let
-              cfg = SessionConfig (Torsor.scale 3 Chronos.second) (Torsor.scale 30 Chronos.second)
+              cfg =
+                SessionConfig (Torsor.scale 3 Chronos.second) (Torsor.scale 30 Chronos.second)
               store = mkSessionStoreDb
               anon = Anonymous Nothing "foo"
               sessionId = SessionId "1"
-              session1 = NewSession { newSessionId = sessionId
-                                    , newSessionCreatedAt = t
-                                    , newSessionData = anon
-                                    }
+              session1 =
+                NewSession
+                  { newSessionId = sessionId
+                  , newSessionCreatedAt = t
+                  , newSessionData = anon
+                  }
               session2 = session1
-              auth = Authenticated $ emptyUserClaims { userClaimsSub = "1"
-                                                     }
+              auth =
+                Authenticated $
+                  emptyUserClaims
+                    { userClaimsSub = "1"
+                    }
             anonSession <- newSession store cfg session1
-            endSession store cfg $ EndSession { endSessionId = sessionId
-                                              , endSessionAt = t
-                                              }
+            endSession store cfg $
+              EndSession
+                { endSessionId = sessionId
+                , endSessionAt = t
+                }
             authSession <-
               authenticateSession store cfg sessionId $
-                NewSession { newSessionId = SessionId "2"
-                           , newSessionCreatedAt = t
-                           , newSessionData = auth
-                           }
-            oldSession <- getSession store cfg $ GetSession { getSessionId = sessionId
-                                                            , getSessionAt = t
-                                                            }
+                NewSession
+                  { newSessionId = SessionId "2"
+                  , newSessionCreatedAt = t
+                  , newSessionData = auth
+                  }
+            oldSession <-
+              getSession store cfg $
+                GetSession
+                  { getSessionId = sessionId
+                  , getSessionAt = t
+                  }
             assert $ do
               authSession === Nothing
               oldSession === SessionNotFound
@@ -197,24 +237,31 @@ spec = do
           t <- forAll genTime
           act $ do
             let
-              cfg = SessionConfig (Torsor.scale 3 Chronos.second) (Torsor.scale 30 Chronos.second)
+              cfg =
+                SessionConfig (Torsor.scale 3 Chronos.second) (Torsor.scale 30 Chronos.second)
               store = mkSessionStoreDb
               anon = Anonymous Nothing "foo"
               sessionId = SessionId "1"
-              session1 = NewSession { newSessionId = sessionId
-                                    , newSessionCreatedAt = t
-                                    , newSessionData = anon
-                                    }
+              session1 =
+                NewSession
+                  { newSessionId = sessionId
+                  , newSessionCreatedAt = t
+                  , newSessionData = anon
+                  }
               session2 = session1
-              auth = Authenticated $ emptyUserClaims { userClaimsSub = "1"
-                                                     }
+              auth =
+                Authenticated $
+                  emptyUserClaims
+                    { userClaimsSub = "1"
+                    }
             anonSession <- newSession store cfg session1
             authSession <-
               authenticateSession store cfg sessionId $
-                NewSession { newSessionId = SessionId "2"
-                           , newSessionCreatedAt = Torsor.add (Torsor.scale 4 Chronos.second) t
-                           , newSessionData = auth
-                           }
+                NewSession
+                  { newSessionId = SessionId "2"
+                  , newSessionCreatedAt = Torsor.add (Torsor.scale 4 Chronos.second) t
+                  , newSessionData = auth
+                  }
             assert $ do
               authSession === Nothing
       it "Getting session increases idle timeout" $ \pool -> do
@@ -222,61 +269,86 @@ spec = do
           t <- forAll genTime
           act $ do
             let
-              cfg = SessionConfig (Torsor.scale 3 Chronos.second) (Torsor.scale 30 Chronos.second)
+              cfg =
+                SessionConfig (Torsor.scale 3 Chronos.second) (Torsor.scale 30 Chronos.second)
               store = mkSessionStoreDb
               anon = Anonymous Nothing "foo"
               sessionId = SessionId "1"
-              session1 = NewSession { newSessionId = sessionId
-                                    , newSessionCreatedAt = t
-                                    , newSessionData = anon
-                                    }
+              session1 =
+                NewSession
+                  { newSessionId = sessionId
+                  , newSessionCreatedAt = t
+                  , newSessionData = anon
+                  }
               session2 = session1
-              auth = Authenticated $ emptyUserClaims { userClaimsSub = "1"
-                                                     }
+              auth =
+                Authenticated $
+                  emptyUserClaims
+                    { userClaimsSub = "1"
+                    }
             anonSession <- newSession store cfg session1
             anonSession' <-
-              getSession store cfg $ GetSession { getSessionId = sessionId
-                                                , getSessionAt = Torsor.add (Torsor.scale 2 Chronos.second) t
-                                                }
+              getSession store cfg $
+                GetSession
+                  { getSessionId = sessionId
+                  , getSessionAt = Torsor.add (Torsor.scale 2 Chronos.second) t
+                  }
             assert $ do
               let sessionData = fromJust anonSession
-              anonSession' ===
-                (SessionFound $ SessionAnonymous $ sessionData {
-                    sessionExpiresAt = Torsor.add (Torsor.scale 5 Chronos.second) t
-                                                               })
+              anonSession'
+                === ( SessionFound $
+                        SessionAnonymous $
+                          sessionData
+                            { sessionExpiresAt = Torsor.add (Torsor.scale 5 Chronos.second) t
+                            }
+                    )
       it "Session always expires after absolute timeout" $ \pool -> do
         arrange (inTransaction pool) $ do
           t <- forAll genTime
           act $ do
             let
-              cfg = SessionConfig (Torsor.scale 10 Chronos.second) (Torsor.scale 30 Chronos.second)
+              cfg =
+                SessionConfig (Torsor.scale 10 Chronos.second) (Torsor.scale 30 Chronos.second)
               store = mkSessionStoreDb
               anon = Anonymous Nothing "foo"
               sessionId = SessionId "1"
-              session1 = NewSession { newSessionId = sessionId
-                                    , newSessionCreatedAt = t
-                                    , newSessionData = anon
-                                    }
+              session1 =
+                NewSession
+                  { newSessionId = sessionId
+                  , newSessionCreatedAt = t
+                  , newSessionData = anon
+                  }
               session2 = session1
-              auth = Authenticated $ emptyUserClaims { userClaimsSub = "1"
-                                                     }
+              auth =
+                Authenticated $
+                  emptyUserClaims
+                    { userClaimsSub = "1"
+                    }
             anonSession <- newSession store cfg session1
             s1 <-
-              getSession store cfg $ GetSession { getSessionId = sessionId
-                                                , getSessionAt = Torsor.add (Torsor.scale 9 Chronos.second) t
-                                                }
+              getSession store cfg $
+                GetSession
+                  { getSessionId = sessionId
+                  , getSessionAt = Torsor.add (Torsor.scale 9 Chronos.second) t
+                  }
             s2 <-
-              getSession store cfg $ GetSession { getSessionId = sessionId
-                                                , getSessionAt = Torsor.add (Torsor.scale 18 Chronos.second) t
-                                                }
+              getSession store cfg $
+                GetSession
+                  { getSessionId = sessionId
+                  , getSessionAt = Torsor.add (Torsor.scale 18 Chronos.second) t
+                  }
             s3 <-
-              getSession store cfg $ GetSession { getSessionId = sessionId
-                                                , getSessionAt = Torsor.add (Torsor.scale 26 Chronos.second) t
-                                                }
+              getSession store cfg $
+                GetSession
+                  { getSessionId = sessionId
+                  , getSessionAt = Torsor.add (Torsor.scale 26 Chronos.second) t
+                  }
             anonSession' <-
-              getSession store cfg $ GetSession { getSessionId = sessionId
-                                                , getSessionAt = Torsor.add (Torsor.scale 30 Chronos.second) t
-                                                }
+              getSession store cfg $
+                GetSession
+                  { getSessionId = sessionId
+                  , getSessionAt = Torsor.add (Torsor.scale 30 Chronos.second) t
+                  }
             assert $ do
               let sessionData = fromJust anonSession
               s1 /== SessionExpired
@@ -288,24 +360,34 @@ spec = do
           t <- forAll genTime
           act $ do
             let
-              cfg = SessionConfig (Torsor.scale 10 Chronos.second) (Torsor.scale 30 Chronos.second)
+              cfg =
+                SessionConfig (Torsor.scale 10 Chronos.second) (Torsor.scale 30 Chronos.second)
               store = mkSessionStoreDb
               anon = Anonymous Nothing "foo"
               sessionId = SessionId "1"
-              session1 = NewSession { newSessionId = sessionId
-                                    , newSessionCreatedAt = t
-                                    , newSessionData = anon
-                                    }
+              session1 =
+                NewSession
+                  { newSessionId = sessionId
+                  , newSessionCreatedAt = t
+                  , newSessionData = anon
+                  }
               session2 = session1
-              auth = Authenticated $ emptyUserClaims { userClaimsSub = "1"
-                                                     }
+              auth =
+                Authenticated $
+                  emptyUserClaims
+                    { userClaimsSub = "1"
+                    }
             anonSession <- newSession store cfg session1
-            endSession store cfg $ EndSession { endSessionId = sessionId
-                                              , endSessionAt = Torsor.add (Torsor.scale 1 Chronos.second) t
-                                              }
-            endSession store cfg $ EndSession { endSessionId = sessionId
-                                              , endSessionAt = Torsor.add (Torsor.scale 100 Chronos.second) t
-                                              }
+            endSession store cfg $
+              EndSession
+                { endSessionId = sessionId
+                , endSessionAt = Torsor.add (Torsor.scale 1 Chronos.second) t
+                }
+            endSession store cfg $
+              EndSession
+                { endSessionId = sessionId
+                , endSessionAt = Torsor.add (Torsor.scale 100 Chronos.second) t
+                }
             assert $ do
               pure ()
       it "Authenticating a session removes old session" $ \pool -> do
@@ -313,28 +395,37 @@ spec = do
           t <- forAll genTime
           act $ do
             let
-              cfg = SessionConfig (Torsor.scale 10 Chronos.second) (Torsor.scale 30 Chronos.second)
+              cfg =
+                SessionConfig (Torsor.scale 10 Chronos.second) (Torsor.scale 30 Chronos.second)
               store = mkSessionStoreDb
               anon = Anonymous Nothing "foo"
               sessionId = SessionId "1"
-              session1 = NewSession { newSessionId = sessionId
-                                    , newSessionCreatedAt = t
-                                    , newSessionData = anon
-                                    }
+              session1 =
+                NewSession
+                  { newSessionId = sessionId
+                  , newSessionCreatedAt = t
+                  , newSessionData = anon
+                  }
               session2 = session1
-              auth = Authenticated $ emptyUserClaims { userClaimsSub = "1"
-                                                     }
+              auth =
+                Authenticated $
+                  emptyUserClaims
+                    { userClaimsSub = "1"
+                    }
             anonSession <- newSession store cfg session1
             authSession <-
               authenticateSession store cfg sessionId $
-                NewSession { newSessionId = SessionId "2"
-                           , newSessionCreatedAt = Torsor.add (Torsor.scale 4 Chronos.second) t
-                           , newSessionData = auth
-                           }
+                NewSession
+                  { newSessionId = SessionId "2"
+                  , newSessionCreatedAt = Torsor.add (Torsor.scale 4 Chronos.second) t
+                  , newSessionData = auth
+                  }
             anonSession' <-
-              getSession store cfg $ GetSession { getSessionId = sessionId
-                                                , getSessionAt = Torsor.add (Torsor.scale 5 Chronos.second) t
-                                                }
+              getSession store cfg $
+                GetSession
+                  { getSessionId = sessionId
+                  , getSessionAt = Torsor.add (Torsor.scale 5 Chronos.second) t
+                  }
             assert $ do
               anonSession' === SessionNotFound
       it "Can't authenticate a non-pre-existing session" $ \pool -> do
@@ -342,22 +433,29 @@ spec = do
           t <- forAll genTime
           act $ do
             let
-              cfg = SessionConfig (Torsor.scale 10 Chronos.second) (Torsor.scale 30 Chronos.second)
+              cfg =
+                SessionConfig (Torsor.scale 10 Chronos.second) (Torsor.scale 30 Chronos.second)
               store = mkSessionStoreDb
               anon = Anonymous Nothing "foo"
               sessionId = SessionId "1"
-              session1 = NewSession { newSessionId = sessionId
-                                    , newSessionCreatedAt = t
-                                    , newSessionData = anon
-                                    }
+              session1 =
+                NewSession
+                  { newSessionId = sessionId
+                  , newSessionCreatedAt = t
+                  , newSessionData = anon
+                  }
               session2 = session1
-              auth = Authenticated $ emptyUserClaims { userClaimsSub = "1"
-                                                     }
+              auth =
+                Authenticated $
+                  emptyUserClaims
+                    { userClaimsSub = "1"
+                    }
             authSession <-
               authenticateSession store cfg (SessionId "3") $
-                NewSession { newSessionId = SessionId "2"
-                           , newSessionCreatedAt = Torsor.add (Torsor.scale 4 Chronos.second) t
-                           , newSessionData = auth
-                           }
+                NewSession
+                  { newSessionId = SessionId "2"
+                  , newSessionCreatedAt = Torsor.add (Torsor.scale 4 Chronos.second) t
+                  , newSessionData = auth
+                  }
             assert $ do
               authSession === Nothing
