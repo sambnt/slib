@@ -12,7 +12,7 @@ module Sam.Util.Postgres (
   abort,
 ) where
 
-import Control.Exception.Safe (MonadMask, bracket_, throwIO, bracket)
+import Control.Exception.Safe (MonadMask, bracket, bracket_, throwIO)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (runStdoutLoggingT)
 import Control.Monad.Reader (ReaderT)
@@ -23,8 +23,8 @@ import Data.Pool (Pool)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Database.Persist.Postgresql (
-  Migration,
   ConnectionString,
+  Migration,
   SqlBackend,
   rawExecute,
   runMigration,
@@ -71,11 +71,12 @@ withTemporaryDatabase migration f = do
       combinedConfig = Temp.defaultConfig <> Temp.cacheConfig dbCache
     hash <- liftIO $ getMigrationHash migration
     migratedConfig <-
-      liftIO $ throwE $
-        Temp.cacheAction
-          ("~/.tmp-postgres/" <> hash)
-          (migrateDb hash migration)
-          combinedConfig
+      liftIO $
+        throwE $
+          Temp.cacheAction
+            ("~/.tmp-postgres/" <> hash)
+            (migrateDb hash migration)
+            combinedConfig
     withConfig migratedConfig $ \db ->
       f (Temp.toConnectionString db)
 
@@ -86,9 +87,9 @@ withConfig
   -> m (Either Temp.StartError b)
 withConfig extra f =
   bracket
-  (liftIO $ Temp.startConfig extra)
-  (either (const $ pure ()) (liftIO . Temp.stop))
-  $ either (pure . Left) (fmap Right . f)
+    (liftIO $ Temp.startConfig extra)
+    (either (const $ pure ()) (liftIO . Temp.stop))
+    $ either (pure . Left) (fmap Right . f)
 
 withDbCacheConfig
   :: (MonadMask m, MonadIO m)
@@ -101,7 +102,6 @@ withDbCacheConfig config =
   bracket
     (liftIO $ Temp.setupInitDbCache config)
     (liftIO . Temp.cleanupInitDbCache)
-
 
 migrateDb :: String -> Migration -> Temp.DB -> IO ()
 migrateDb hash migration db = do

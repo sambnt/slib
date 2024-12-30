@@ -4,8 +4,10 @@
 module Sam.Auth.App where
 
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Logger (runStdoutLoggingT)
 import Control.Monad.Reader (ReaderT)
 import Data.Pool (Pool)
+import Database.Persist.Postgresql (withPostgresqlPool)
 import Database.Persist.Sql (SqlBackend)
 import Network.HTTP.Client.TLS (newTlsManagerWith, tlsManagerSettings)
 import Network.Wai (Application, Request, requestHeaders)
@@ -21,8 +23,6 @@ import Sam.Auth.OAuth (OAuth, mkOAuth)
 import Sam.Auth.Session.Cookies (SessionCookies, mkSessionCookies)
 import Sam.Util.Postgres (withTemporaryDatabase)
 import Servant (Context (EmptyContext, (:.)))
-import Database.Persist.Postgresql (withPostgresqlPool)
-import Control.Monad.Logger (runStdoutLoggingT)
 import Servant.Server.Experimental.Auth (AuthHandler)
 import Servant.Server.Generic (genericServeTWithContext)
 

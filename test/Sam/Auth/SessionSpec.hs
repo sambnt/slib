@@ -7,10 +7,16 @@ module Sam.Auth.SessionSpec where
 
 import Chronos (Time)
 import Chronos qualified
+import Control.Exception.Safe (MonadMask)
 import Control.Monad (join)
+import Control.Monad.Logger (runNoLoggingT)
+import Control.Monad.Morph (lift)
+import Control.Monad.Trans.Resource (MonadUnliftIO)
 import Data.Maybe (fromJust)
+import Data.Pool (Pool)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
+import Database.Persist.Postgresql (SqlBackend, withPostgresqlPool)
 import Hedgehog (
   Gen,
   PropertyT,
@@ -22,8 +28,6 @@ import Hedgehog (
  )
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
-import Database.Persist.Postgresql (withPostgresqlPool, SqlBackend)
-import Control.Monad.Logger (runNoLoggingT)
 import Sam.Auth.Database.Schema qualified as Db
 import Sam.Auth.JWT.Types (UserClaims (..), emptyUserClaims)
 import Sam.Auth.Session (mkSessionStoreDb)
@@ -47,10 +51,6 @@ import Sam.Util.Postgres (
 import Test.Hspec (Spec, aroundAll, describe, it)
 import Test.Hspec.Hedgehog (hedgehog)
 import Torsor qualified
-import Control.Monad.Trans.Resource (MonadUnliftIO)
-import Control.Exception.Safe (MonadMask)
-import Data.Pool (Pool)
-import Control.Monad.Morph (lift)
 
 -- act :: Applicative f => a -> f a
 -- act = pure

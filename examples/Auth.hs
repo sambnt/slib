@@ -31,11 +31,11 @@ export SESSION_INSECURE="true"
 module Main where
 
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Reader (ReaderT)
-import Database.Persist.Postgresql (withPostgresqlPool)
 import Control.Monad.Logger (runStdoutLoggingT)
+import Control.Monad.Reader (ReaderT)
 import Data.Pool (Pool)
 import Data.String (fromString)
+import Database.Persist.Postgresql (withPostgresqlPool)
 import Database.Persist.Sql (SqlBackend, runSqlPool)
 import GHC.Generics (Generic)
 import Lucid (
