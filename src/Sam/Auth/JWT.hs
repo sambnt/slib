@@ -1,54 +1,72 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
-{- |
+{-|
 Module                  : Sam.Auth.JWT
 Copyright               : (c) 2024-2025 Samuel Evans-Powell
 SPDX-License-Identifier : MPL-2.0
 Maintainer              : Samuel Evans-Powell <mail@sevanspowell.net>
 Stability               : experimental
 -}
-
 module Sam.Auth.JWT where
 
+import qualified Control.Concurrent.STM as STM
 import Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVarIO)
-import Control.Lens ((.~), (^?), (^.))
+import Control.Lens ((.~), (^.), (^?))
 import Control.Lens.Prism (_Just)
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Time (MonadTime)
-import Crypto.JOSE (decodeCompact, HeaderParam (HeaderParam), runJOSE, signatures, header, kid, jwkKid, JWKSet(JWKSet))
-import Crypto.JWT (SignedJWT, JWTError, JWK, StringOrURI, defaultJWTValidationSettings, jwtValidationSettingsIssuerPredicate, verifyJWT)
+import Crypto.JOSE (
+  HeaderParam (HeaderParam),
+  JWKSet (JWKSet),
+  decodeCompact,
+  header,
+  jwkKid,
+  kid,
+  runJOSE,
+  signatures,
+ )
+import Crypto.JWT (
+  JWK,
+  JWTError,
+  SignedJWT,
+  StringOrURI,
+  defaultJWTValidationSettings,
+  jwtValidationSettingsIssuerPredicate,
+  verifyJWT,
+ )
+import qualified Data.Aeson as Aeson
+import qualified Data.ByteString.Lazy as BSL
 import Data.Function ((&))
 import Data.List (find)
 import Data.String (fromString)
 import Data.Text (Text)
-import Network.HTTP.Client (httpLbs, responseBody)
-import Network.OAuth.OAuth2 (IdToken, idtoken)
-import Sam.Auth.Config.JWT (ConfigJWT, cfgJWTJWKSURL, cfgJWTAud, cfgJWTIss)
-import Sam.Auth.JWT.Types (UserClaims)
-import Sam.Util.URI (uriToStr, URI)
-import Servant (throwError)
-import qualified Control.Concurrent.STM as STM
-import qualified Data.Aeson as Aeson
-import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
+import Network.HTTP.Client (httpLbs, responseBody)
 import qualified Network.HTTP.Client as HTTP
+import Network.OAuth.OAuth2 (IdToken, idtoken)
+import Sam.Auth.Config.JWT (ConfigJWT, cfgJWTAud, cfgJWTIss, cfgJWTJWKSURL)
+import Sam.Auth.JWT.Types (UserClaims)
+import Sam.Util.URI (URI, uriToStr)
+import Servant (throwError)
 
-data VerifyError = VerifyError Text
-                 | VerifyJWTError JWTError
-                 deriving (Eq, Show)
+data VerifyError
+  = VerifyError Text
+  | VerifyJWTError JWTError
+  deriving (Eq, Show)
 
-data JWKSCache = JWKSCache { jwksCache   :: TVar (Maybe JWKSet)
-                           , jwksManager :: HTTP.Manager
-                           , jwksURI     :: URI
-                           , jwksIss     :: Text
-                           , jwksAud     :: Text
-                           }
+data JWKSCache = JWKSCache
+  { jwksCache :: TVar (Maybe JWKSet)
+  , jwksManager :: HTTP.Manager
+  , jwksURI :: URI
+  , jwksIss :: Text
+  , jwksAud :: Text
+  }
 
 mkJWKSCache
-  :: MonadIO m
+  :: (MonadIO m)
   => ConfigJWT
   -> HTTP.Manager
   -> m JWKSCache
@@ -59,12 +77,14 @@ mkJWKSCache cfg manager = liftIO $ do
   cache <- case eJwks of
     Left _ -> newTVarIO Nothing
     Right jwks -> newTVarIO (Just jwks)
-  pure $ JWKSCache { jwksCache   = cache
-                   , jwksManager = manager
-                   , jwksURI     = uri
-                   , jwksIss     = cfgJWTIss cfg
-                   , jwksAud     = cfgJWTAud cfg
-                   }
+  pure $
+    JWKSCache
+      { jwksCache = cache
+      , jwksManager = manager
+      , jwksURI = uri
+      , jwksIss = cfgJWTIss cfg
+      , jwksAud = cfgJWTAud cfg
+      }
 
 mkRequest :: URI -> HTTP.Request
 mkRequest = uriToStr
@@ -104,13 +124,13 @@ doJwtVerify jwk aud iss jwt = do
   let
     config =
       defaultJWTValidationSettings (== aud)
-      & jwtValidationSettingsIssuerPredicate .~ (== iss)
+        & jwtValidationSettingsIssuerPredicate .~ (== iss)
   eUserClaims <- runJOSE $ verifyJWT config jwk jwt
   case eUserClaims of
     Left err -> throwError $ VerifyJWTError err
     Right userClaims -> pure userClaims
 
-getJWKForKid :: MonadIO m => JWKSCache -> Text -> m (Maybe JWK)
+getJWKForKid :: (MonadIO m) => JWKSCache -> Text -> m (Maybe JWK)
 getJWKForKid jwks vkid = liftIO $ do
   mJWKSet <- readTVarIO $ jwksCache jwks
   case mJWKSet of
@@ -118,12 +138,14 @@ getJWKForKid jwks vkid = liftIO $ do
     Just (JWKSet vjwks) ->
       pure $ find (\jwk -> jwk ^. jwkKid == Just vkid) vjwks
 
-cacheJWKS :: MonadIO m => JWKSCache -> JWKSet -> m ()
-cacheJWKS jwks jwkSet = liftIO $
-  STM.atomically $ STM.writeTVar (jwksCache jwks) (Just jwkSet)
+cacheJWKS :: (MonadIO m) => JWKSCache -> JWKSet -> m ()
+cacheJWKS jwks jwkSet =
+  liftIO $
+    STM.atomically $
+      STM.writeTVar (jwksCache jwks) (Just jwkSet)
 
 retrieveJWK
-  :: MonadIO m
+  :: (MonadIO m)
   => JWKSCache
   -> SignedJWT
   -> m (Either String JWK)
@@ -146,7 +168,7 @@ retrieveJWK jwks jwt = do
                 Just jwk -> pure $ Right jwk
 
 fetchJWKS
-  :: MonadIO m
+  :: (MonadIO m)
   => HTTP.Manager
   -> HTTP.Request
   -> m (Either String JWKSet)

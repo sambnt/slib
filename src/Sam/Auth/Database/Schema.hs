@@ -1,12 +1,13 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -17,27 +18,25 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE LambdaCase #-}
 
-{- |
+{-|
 Module                  : Sam.Auth.Database.Schema
 Copyright               : (c) 2024-2025 Samuel Evans-Powell
 SPDX-License-Identifier : MPL-2.0
 Maintainer              : Samuel Evans-Powell <mail@sevanspowell.net>
 Stability               : experimental
 -}
-
 module Sam.Auth.Database.Schema where
 
-import Database.Persist.TH
-  ( mkMigrate,
-    mkPersist,
-    persistLowerCase,
-    share,
-    sqlSettings,
-  )
-import Data.Text (Text)
 import Data.Int (Int64)
+import Data.Text (Text)
+import Database.Persist.TH (
+  mkMigrate,
+  mkPersist,
+  persistLowerCase,
+  share,
+  sqlSettings,
+ )
 
 -- TODO: AuthenticateSession and AnonymousSession
 share

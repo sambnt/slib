@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-{- |
+{-|
 Module                  : Sam.Auth.Config.SSM
 Copyright               : (c) 2024-2025 Samuel Evans-Powell
 SPDX-License-Identifier : MPL-2.0
@@ -18,8 +18,9 @@ Parameter Store.
 Make sure to call "getSSMEnvironment" before using any code that depends on
 finding the decoded SSM environment variables.
 -}
-module Sam.Auth.Config.SSM ( getSSMEnvironment
-                           ) where
+module Sam.Auth.Config.SSM (
+  getSSMEnvironment,
+) where
 
 import qualified Amazonka as AWS
 import Amazonka.SSM (newGetParameter)
@@ -29,12 +30,12 @@ import Amazonka.SSM.GetParameter (
  )
 import Amazonka.SSM.Lens (parameter_value)
 import Control.Lens ((&), (?~), (^.))
+import Control.Monad (forM_)
+import Data.List (stripPrefix)
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import System.Environment (getEnvironment, setEnv)
-import Data.List (stripPrefix)
-import Control.Monad (forM_)
-import Data.Maybe (mapMaybe)
 import qualified System.IO as IO
 
 getSSMEnvironment :: IO ()

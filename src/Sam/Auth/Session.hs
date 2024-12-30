@@ -1,44 +1,66 @@
-{- |
+{-|
 Module                  : Sam.Auth.Session
 Copyright               : (c) 2024-2025 Samuel Evans-Powell
 SPDX-License-Identifier : MPL-2.0
 Maintainer              : Samuel Evans-Powell <mail@sevanspowell.net>
 Stability               : experimental
 -}
-
 module Sam.Auth.Session where
 
 import Chronos (Time)
+import qualified Chronos
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (ReaderT)
-import Data.Maybe (fromJust, fromMaybe)
-import Database.Esqueleto.Experimental ((=.), (==.), (^.))
-import Database.Persist.Sql (SqlBackend)
-import Sam.Auth.JWT.Types (UserClaims(..), userClaimsSub, userClaimsEmail, userClaimsName, userClaimsEmailVerified)
-import Sam.Auth.Session.Types (sessionTimeoutIdle, SessionConfig (..), SessionStore (..), Anonymous (..), Authenticated (Authenticated), SessionData (..), NewSession (..), SessionId (SessionId), SessionResult (..), Session (..), EndSession (..), authUserClaims, GetSession (..), isExpired, getSessionData)
-import Sam.Util.URI (parseURI, uriToStr)
-import qualified Chronos
 import qualified Data.Aeson as Aeson
 import qualified Data.ByteString.Lazy as BSL
+import Data.Maybe (fromJust, fromMaybe)
 import qualified Data.Text.Encoding as T
+import Database.Esqueleto.Experimental ((=.), (==.), (^.))
 import qualified Database.Esqueleto.Experimental as Db
 import qualified Database.Persist.Class as P
+import Database.Persist.Sql (SqlBackend)
 import qualified Debug.Trace as Debug
 import qualified Sam.Auth.Database.Schema as Db
+import Sam.Auth.JWT.Types (
+  UserClaims (..),
+  userClaimsEmail,
+  userClaimsEmailVerified,
+  userClaimsName,
+  userClaimsSub,
+ )
+import Sam.Auth.Session.Types (
+  Anonymous (..),
+  Authenticated (Authenticated),
+  EndSession (..),
+  GetSession (..),
+  NewSession (..),
+  Session (..),
+  SessionConfig (..),
+  SessionData (..),
+  SessionId (SessionId),
+  SessionResult (..),
+  SessionStore (..),
+  authUserClaims,
+  getSessionData,
+  isExpired,
+  sessionTimeoutIdle,
+ )
+import Sam.Util.URI (parseURI, uriToStr)
 import qualified Torsor
 
 mkSessionStoreDb
-  :: MonadIO m
+  :: (MonadIO m)
   => SessionStore (ReaderT SqlBackend m) Anonymous Authenticated
 mkSessionStoreDb =
-  SessionStore { newSession = newSessionDb
-               , authenticateSession = authenticateSessionDb
-               , getSession = getSessionDb
-               , endSession = endSessionDb
-               }
+  SessionStore
+    { newSession = newSessionDb
+    , authenticateSession = authenticateSessionDb
+    , getSession = getSessionDb
+    , endSession = endSessionDb
+    }
 
 newSessionDb
-  :: MonadIO m
+  :: (MonadIO m)
   => SessionConfig
   -> NewSession Anonymous
   -> ReaderT SqlBackend m (Maybe (SessionData Anonymous))
@@ -51,7 +73,7 @@ newSessionDb cfg ns = do
     codeVerifierTxt = anonSessionCodeVerifier anonData
   mExisting <- Db.get (toDbSessionId seshId)
   case mExisting of
-    Just _  -> pure Nothing
+    Just _ -> pure Nothing
     Nothing -> do
       Db.insertKey (toDbSessionId seshId) $
         Db.Session
@@ -60,14 +82,17 @@ newSessionDb cfg ns = do
           Nothing
           (Chronos.getTime createdAt)
           (Chronos.getTime expiresAt)
-      pure $ Just $ SessionData { sessionId = newSessionId ns
-                                , sessionExpiresAt = expiresAt
-                                , sessionCreatedAt = createdAt
-                                , sessionData = anonData
-                                }
+      pure $
+        Just $
+          SessionData
+            { sessionId = newSessionId ns
+            , sessionExpiresAt = expiresAt
+            , sessionCreatedAt = createdAt
+            , sessionData = anonData
+            }
 
 authenticateSessionDb
-  :: MonadIO m
+  :: (MonadIO m)
   => SessionConfig
   -> SessionId
   -> NewSession Authenticated
@@ -82,9 +107,12 @@ authenticateSessionDb cfg oldSessionId ns = do
         createdAt = newSessionCreatedAt ns
         expiresAt = Torsor.add (sessionTimeoutIdle cfg) createdAt
 
-      sr <- getSessionDb cfg $ GetSession { getSessionId = oldSessionId
-                                          , getSessionAt = createdAt
-                                          }
+      sr <-
+        getSessionDb cfg $
+          GetSession
+            { getSessionId = oldSessionId
+            , getSessionAt = createdAt
+            }
       case sr of
         SessionExpired ->
           pure $ Just SessionExpired
@@ -92,9 +120,11 @@ authenticateSessionDb cfg oldSessionId ns = do
           pure $ Just SessionNotFound
         SessionFound _oldSession -> do
           -- End anonymous session at same time we authenticate the session
-          endSessionDb cfg $ EndSession { endSessionId = oldSessionId
-                                        , endSessionAt = createdAt
-                                        }
+          endSessionDb cfg $
+            EndSession
+              { endSessionId = oldSessionId
+              , endSessionAt = createdAt
+              }
 
           let authData = newSessionData ns
 
@@ -109,16 +139,18 @@ authenticateSessionDb cfg oldSessionId ns = do
               (Chronos.getTime createdAt)
               (Chronos.getTime expiresAt)
 
-          pure $ Just $ SessionFound $
-            SessionData { sessionId = newSessionId ns
-                        , sessionExpiresAt = expiresAt
-                        , sessionCreatedAt = createdAt
-                        , sessionData = authData
-                        }
-
+          pure $
+            Just $
+              SessionFound $
+                SessionData
+                  { sessionId = newSessionId ns
+                  , sessionExpiresAt = expiresAt
+                  , sessionCreatedAt = createdAt
+                  , sessionData = authData
+                  }
 
 getSessionDb
-  :: MonadIO m
+  :: (MonadIO m)
   => SessionConfig
   -> GetSession
   -> ReaderT SqlBackend m (SessionResult (Session Anonymous Authenticated))
@@ -130,33 +162,42 @@ getSessionDb cfg gs = do
       let session = sessionFromDb sessionDb
       let currentTime = getSessionAt gs
       if isExpired cfg currentTime (getSessionData session)
-      then do
-        endSessionDb cfg (EndSession { endSessionId = getSessionId gs
-                                     , endSessionAt = currentTime
-                                     }
-                         )
-        pure SessionExpired
-      else do
-        touchSession cfg currentTime (getSessionId gs)
-        case session of
-          SessionAnonymous sd -> do
-            pure $ SessionFound $ SessionAnonymous sd {
-              sessionExpiresAt = Torsor.add (sessionTimeoutIdle cfg) currentTime
-            }
-          SessionAuthenticated sd -> do
-            let userId = sessionData sd
-            mUser <- Db.get userId
-            case mUser of
-              Nothing -> pure SessionNotFound
-              Just user -> pure $
-                SessionFound $ SessionAuthenticated sd
-                  { sessionData =
-                      Authenticated $ userFromDb (Db.Entity userId user)
-                  , sessionExpiresAt = Torsor.add (sessionTimeoutIdle cfg) currentTime
-                  }
+        then do
+          endSessionDb
+            cfg
+            ( EndSession
+                { endSessionId = getSessionId gs
+                , endSessionAt = currentTime
+                }
+            )
+          pure SessionExpired
+        else do
+          touchSession cfg currentTime (getSessionId gs)
+          case session of
+            SessionAnonymous sd -> do
+              pure $
+                SessionFound $
+                  SessionAnonymous
+                    sd
+                      { sessionExpiresAt = Torsor.add (sessionTimeoutIdle cfg) currentTime
+                      }
+            SessionAuthenticated sd -> do
+              let userId = sessionData sd
+              mUser <- Db.get userId
+              case mUser of
+                Nothing -> pure SessionNotFound
+                Just user ->
+                  pure $
+                    SessionFound $
+                      SessionAuthenticated
+                        sd
+                          { sessionData =
+                              Authenticated $ userFromDb (Db.Entity userId user)
+                          , sessionExpiresAt = Torsor.add (sessionTimeoutIdle cfg) currentTime
+                          }
 
 endSessionDb
-  :: MonadIO m
+  :: (MonadIO m)
   => SessionConfig
   -> EndSession
   -> ReaderT SqlBackend m ()
@@ -165,7 +206,7 @@ endSessionDb _ sesh = P.delete (toDbSessionId $ endSessionId sesh)
 toDbSessionId :: SessionId -> Db.SessionId
 toDbSessionId (SessionId sid) = Db.SessionKey sid
 
-upsertUser :: MonadIO m => UserClaims -> ReaderT SqlBackend m Db.UserId
+upsertUser :: (MonadIO m) => UserClaims -> ReaderT SqlBackend m Db.UserId
 upsertUser userClaims = do
   let
     userId = Db.UserKey $ userClaimsSub userClaims
@@ -183,26 +224,32 @@ sessionFromDb
 sessionFromDb (Db.Entity (Db.SessionKey sid) sessionDb) = do
   let
     mkSessionData a =
-      SessionData { sessionId = SessionId sid
-                  , sessionExpiresAt = Chronos.Time $ Db.sessionExpiresAt sessionDb
-                  , sessionCreatedAt = Chronos.Time $ Db.sessionCreatedAt sessionDb
-                  , sessionData = a
-                  }
+      SessionData
+        { sessionId = SessionId sid
+        , sessionExpiresAt = Chronos.Time $ Db.sessionExpiresAt sessionDb
+        , sessionCreatedAt = Chronos.Time $ Db.sessionCreatedAt sessionDb
+        , sessionData = a
+        }
   case Db.sessionUser sessionDb of
     Nothing ->
       let
         redirect = do
-          uriStr <- Debug.trace ("AAA: " <> show sessionDb) $ Db.sessionRedirectTo sessionDb
-          case Debug.trace ("BBB: " <> show (parseURI (T.encodeUtf8 uriStr))) (parseURI (T.encodeUtf8 uriStr)) of
+          uriStr <-
+            Debug.trace ("AAA: " <> show sessionDb) $ Db.sessionRedirectTo sessionDb
+          case Debug.trace
+            ("BBB: " <> show (parseURI (T.encodeUtf8 uriStr)))
+            (parseURI (T.encodeUtf8 uriStr)) of
             Left _ -> Nothing
             Right uri -> Just uri
         codeVerifier =
           fromMaybe "" $ Db.sessionCodeVerifier sessionDb
-      in
-        SessionAnonymous $ mkSessionData
-          Anonymous { anonSessionRedirect = redirect
-                    , anonSessionCodeVerifier = codeVerifier
-                    }
+       in
+        SessionAnonymous $
+          mkSessionData
+            Anonymous
+              { anonSessionRedirect = redirect
+              , anonSessionCodeVerifier = codeVerifier
+              }
     Just userId ->
       SessionAuthenticated $ mkSessionData userId
 
@@ -210,20 +257,21 @@ userFromDb :: Db.Entity Db.User -> UserClaims
 userFromDb (Db.Entity (Db.UserKey userId) user) = do
   let
     claims =
-        fromJust
-        $ Aeson.decode
-        $ BSL.fromStrict
-        $ T.encodeUtf8
-        $ Db.userClaims user
-  UserClaims { jwtClaims = claims
-             , userClaimsEmail = Db.userEmail user
-             , userClaimsEmailVerified = Db.userEmailVerified user
-             , userClaimsName = Db.userName user
-             , userClaimsSub = userId
-             }
+      fromJust $
+        Aeson.decode $
+          BSL.fromStrict $
+            T.encodeUtf8 $
+              Db.userClaims user
+  UserClaims
+    { jwtClaims = claims
+    , userClaimsEmail = Db.userEmail user
+    , userClaimsEmailVerified = Db.userEmailVerified user
+    , userClaimsName = Db.userName user
+    , userClaimsSub = userId
+    }
 
 touchSession
-  :: MonadIO m
+  :: (MonadIO m)
   => SessionConfig
   -> Time
   -> SessionId
@@ -231,5 +279,5 @@ touchSession
 touchSession cfg currentTime sid = do
   let t = Torsor.add (sessionTimeoutIdle cfg) currentTime
   Db.update $ \s -> do
-    Db.set s [ Db.SessionExpiresAt =. Db.val (Chronos.getTime t) ]
+    Db.set s [Db.SessionExpiresAt =. Db.val (Chronos.getTime t)]
     Db.where_ $ (s ^. Db.SessionId) ==. Db.val (toDbSessionId sid)
