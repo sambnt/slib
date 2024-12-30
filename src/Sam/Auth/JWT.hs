@@ -10,7 +10,7 @@ Stability               : experimental
 -}
 module Sam.Auth.JWT where
 
-import qualified Control.Concurrent.STM as STM
+import Control.Concurrent.STM qualified as STM
 import Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVarIO)
 import Control.Lens ((.~), (^.), (^?))
 import Control.Lens.Prism (_Just)
@@ -36,16 +36,16 @@ import Crypto.JWT (
   jwtValidationSettingsIssuerPredicate,
   verifyJWT,
  )
-import qualified Data.Aeson as Aeson
-import qualified Data.ByteString.Lazy as BSL
+import Data.Aeson qualified as Aeson
+import Data.ByteString.Lazy qualified as BSL
 import Data.Function ((&))
 import Data.List (find)
 import Data.String (fromString)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import Network.HTTP.Client (httpLbs, responseBody)
-import qualified Network.HTTP.Client as HTTP
+import Network.HTTP.Client qualified as HTTP
 import Network.OAuth.OAuth2 (IdToken, idtoken)
 import Sam.Auth.Config.JWT (ConfigJWT, cfgJWTAud, cfgJWTIss, cfgJWTJWKSURL)
 import Sam.Auth.JWT.Types (UserClaims)

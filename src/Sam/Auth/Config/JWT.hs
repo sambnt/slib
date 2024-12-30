@@ -9,8 +9,8 @@ module Sam.Auth.Config.JWT where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import Sam.Util.URI (URI, parseURI)
 import System.Environment (getEnv)
 

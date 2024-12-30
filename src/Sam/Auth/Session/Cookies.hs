@@ -13,14 +13,14 @@ module Sam.Auth.Session.Cookies where
 
 -- TODO: Explicit import
 
-import qualified Chronos
+import Chronos qualified
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (ReaderT)
 import Crypto.Random.Entropy as Random
-import qualified Data.ByteString.Base64 as Base64
+import Data.ByteString.Base64 qualified as Base64
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text.Encoding as TE
+import Data.Text.Encoding qualified as TE
 import Database.Persist.Sql (SqlBackend)
 import Sam.Auth.Config.Session (ConfigSession (..), IsSecure, isSecure)
 import Sam.Auth.JWT.Types (UserClaims)
@@ -40,9 +40,9 @@ import Sam.Auth.Session.Types (
   authUserClaims,
   sessionData,
  )
-import qualified Sam.Auth.Session.Types as Store
+import Sam.Auth.Session.Types qualified as Store
 import Web.Cookie (SetCookie (..), defaultSetCookie, parseCookies, sameSiteLax)
-import qualified Web.Cookie as Web
+import Web.Cookie qualified as Web
 import Web.HttpApiData (FromHttpApiData, parseHeader, parseQueryParam)
 
 data SessionCookies m

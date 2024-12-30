@@ -14,7 +14,7 @@ import Sam.Auth.Api (api, apiServer, authHandler)
 import Sam.Auth.Config.JWT (ConfigJWT, envConfigJWT)
 import Sam.Auth.Config.OAuth (ConfigOAuth, envConfigOAuth)
 import Sam.Auth.Config.Session (ConfigSession, envConfigSession)
-import qualified Sam.Auth.Database.Schema as Db
+import Sam.Auth.Database.Schema qualified as Db
 import Sam.Auth.JWT (JWKSCache, mkJWKSCache)
 import Sam.Auth.JWT.Types (UserClaims)
 import Sam.Auth.OAuth (OAuth, mkOAuth)

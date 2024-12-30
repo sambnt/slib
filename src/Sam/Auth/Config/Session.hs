@@ -10,15 +10,15 @@ Stability               : experimental
 module Sam.Auth.Config.Session where
 
 import Chronos (Timespan)
-import qualified Chronos
+import Chronos qualified
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Int (Int64)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import System.Environment (getEnv, lookupEnv)
 import Text.Read (readMaybe)
-import qualified Torsor
+import Torsor qualified
 
 import Sam.Auth.Session.Types (TimeoutSecondsAbsolute, TimeoutSecondsIdle)
 

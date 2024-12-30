@@ -8,19 +8,19 @@ Stability               : experimental
 module Sam.Auth.Session where
 
 import Chronos (Time)
-import qualified Chronos
+import Chronos qualified
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (ReaderT)
-import qualified Data.Aeson as Aeson
-import qualified Data.ByteString.Lazy as BSL
+import Data.Aeson qualified as Aeson
+import Data.ByteString.Lazy qualified as BSL
 import Data.Maybe (fromJust, fromMaybe)
-import qualified Data.Text.Encoding as T
+import Data.Text.Encoding qualified as T
 import Database.Esqueleto.Experimental ((=.), (==.), (^.))
-import qualified Database.Esqueleto.Experimental as Db
-import qualified Database.Persist.Class as P
+import Database.Esqueleto.Experimental qualified as Db
+import Database.Persist.Class qualified as P
 import Database.Persist.Sql (SqlBackend)
-import qualified Debug.Trace as Debug
-import qualified Sam.Auth.Database.Schema as Db
+import Debug.Trace qualified as Debug
+import Sam.Auth.Database.Schema qualified as Db
 import Sam.Auth.JWT.Types (
   UserClaims (..),
   userClaimsEmail,
@@ -46,7 +46,7 @@ import Sam.Auth.Session.Types (
   sessionTimeoutIdle,
  )
 import Sam.Util.URI (parseURI, uriToStr)
-import qualified Torsor
+import Torsor qualified
 
 mkSessionStoreDb
   :: (MonadIO m)

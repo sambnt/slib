@@ -9,8 +9,8 @@ module Sam.Auth.JWT.Types where
 
 import Crypto.JWT (ClaimsSet, HasClaimsSet, claimsSet, emptyClaimsSet)
 import Data.Aeson (FromJSON, ToJSON, parseJSON, toJSON, (.:))
-import qualified Data.Aeson as Aeson
-import qualified Data.Aeson.KeyMap as M
+import Data.Aeson qualified as Aeson
+import Data.Aeson.KeyMap qualified as M
 import Data.Function ((&))
 import Data.Text (Text)
 

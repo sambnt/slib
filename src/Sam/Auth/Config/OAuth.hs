@@ -13,10 +13,10 @@ Stability               : experimental
 module Sam.Auth.Config.OAuth where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import qualified Data.ByteString.UTF8 as BSU
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import qualified Data.Text.Lazy as TL
+import Data.ByteString.UTF8 qualified as BSU
+import Data.Map qualified as Map
+import Data.Set qualified as Set
+import Data.Text.Lazy qualified as TL
 import Network.OAuth2.Experiment (
   AuthorizationCodeApplication (AuthorizationCodeApplication),
   ClientAuthenticationMethod (ClientSecretPost),
@@ -28,7 +28,7 @@ import Network.OAuth2.Experiment (
 import Sam.Util.URI (URI, fromURIByteString)
 import System.Environment (getEnv, lookupEnv)
 import URI.ByteString (laxURIParserOptions, parseURI)
-import qualified URI.ByteString as U
+import URI.ByteString qualified as U
 
 data ConfigOAuth
   = ConfigOAuth

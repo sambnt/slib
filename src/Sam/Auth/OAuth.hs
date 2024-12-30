@@ -13,7 +13,7 @@ module Sam.Auth.OAuth where
 import Control.Monad.Except (runExceptT)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Text (Text)
-import qualified Network.HTTP.Client as HTTP
+import Network.HTTP.Client qualified as HTTP
 import Network.OAuth.OAuth2 (
   ExchangeToken (ExchangeToken),
   OAuth2Token,

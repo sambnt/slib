@@ -5,5 +5,5 @@ Library of software components for business.
 ## Format code
 
 ```
-fourmolu -i src/*
+fourmolu -i src/* test/*
 ```

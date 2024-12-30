@@ -15,10 +15,10 @@ module Sam.Util.URI (
 ) where
 
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as BC8
+import Data.ByteString.Char8 qualified as BC8
 import Data.String (IsString, fromString)
 import URI.ByteString (URIParseError)
-import qualified URI.ByteString as U
+import URI.ByteString qualified as U
 
 data URI
   = URI (U.URIRef U.Absolute)

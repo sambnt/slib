@@ -17,11 +17,11 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (runNoLoggingT, runStdoutLoggingT)
 import Control.Monad.Reader (ReaderT)
 import Control.Monad.Trans.Resource (MonadUnliftIO)
-import qualified Crypto.Hash.SHA256 as SHA256
-import qualified Data.ByteString.Base64 as Base64
+import Crypto.Hash.SHA256 qualified as SHA256
+import Data.ByteString.Base64 qualified as Base64
 import Data.Pool (Pool)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import Database.Persist.Postgresql (
   Migration,
   SqlBackend,
@@ -33,7 +33,7 @@ import Database.Persist.Postgresql (
   withPostgresqlConn,
   withPostgresqlPool,
  )
-import qualified Database.Postgres.Temp as Temp
+import Database.Postgres.Temp qualified as Temp
 
 inTransaction
   :: (MonadMask m, MonadUnliftIO m)

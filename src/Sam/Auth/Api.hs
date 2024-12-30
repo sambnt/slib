@@ -20,7 +20,7 @@ module Sam.Auth.Api where
 import Control.Monad.Except (runExceptT)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (ReaderT)
-import qualified Data.ByteString.Lazy.UTF8 as BSLU
+import Data.ByteString.Lazy.UTF8 qualified as BSLU
 import Data.Pool (Pool)
 import Data.Text (Text)
 import Database.Persist.Sql (SqlBackend, runSqlPool)

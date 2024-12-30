@@ -22,7 +22,7 @@ module Sam.Auth.Config.SSM (
   getSSMEnvironment,
 ) where
 
-import qualified Amazonka as AWS
+import Amazonka qualified as AWS
 import Amazonka.SSM (newGetParameter)
 import Amazonka.SSM.GetParameter (
   getParameterResponse_parameter,
@@ -34,9 +34,9 @@ import Control.Monad (forM_)
 import Data.List (stripPrefix)
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import System.Environment (getEnvironment, setEnv)
-import qualified System.IO as IO
+import System.IO qualified as IO
 
 getSSMEnvironment :: IO ()
 getSSMEnvironment = do

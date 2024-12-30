@@ -14,7 +14,7 @@ import Chronos (Time, Timespan)
 import Data.Text (Text)
 import Sam.Auth.JWT.Types (UserClaims)
 import Sam.Util.URI (URI)
-import qualified Torsor
+import Torsor qualified
 
 type TimeoutSecondsAbsolute = Timespan
 type TimeoutSecondsIdle = Timespan
