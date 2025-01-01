@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 {-|
 Module                  : Sam.Auth.Database
 Copyright               : (c) 2024-2025 Samuel Evans-Powell
@@ -23,6 +24,15 @@ import Sam.Auth.JWT.Types (
   userClaimsName,
   userClaimsSub,
  )
+import Database.Esqueleto.Experimental (select, from, table)
+
+getUserClaims :: MonadIO m => ReaderT SqlBackend m [UserClaims]
+getUserClaims = do
+  us <- select $ do
+    from $
+      table @Db.UserClaims
+
+  pure $ fmap userClaimsFromDb us
 
 userClaimsFromDb :: Db.Entity Db.UserClaims -> UserClaims
 userClaimsFromDb (Db.Entity (Db.UserClaimsKey userId) user) = do
