@@ -18,6 +18,7 @@ import Database.Esqueleto.Experimental qualified as Db
 import Database.Persist.Class qualified as P
 import Database.Persist.Sql (SqlBackend)
 import Debug.Trace qualified as Debug
+import Sam.Auth.Database qualified as Db
 import Sam.Auth.Database.Schema qualified as Db
 import Sam.Auth.Session.Types (
   Anonymous (..),
@@ -38,7 +39,6 @@ import Sam.Auth.Session.Types (
  )
 import Sam.Util.URI (parseURI, uriToStr)
 import Torsor qualified
-import Sam.Auth.Database qualified as Db
 
 mkSessionStoreDb
   :: (MonadIO m)

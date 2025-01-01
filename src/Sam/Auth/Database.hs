@@ -7,11 +7,15 @@ Stability               : experimental
 -}
 module Sam.Auth.Database where
 
-import Sam.Auth.Database.Schema qualified as Db
-import Database.Esqueleto.Experimental qualified as Db
+import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Reader (ReaderT)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BSL
+import Data.Maybe (fromJust)
 import Data.Text.Encoding qualified as T
+import Database.Esqueleto.Experimental qualified as Db
+import Database.Persist.Postgresql (SqlBackend)
+import Sam.Auth.Database.Schema qualified as Db
 import Sam.Auth.JWT.Types (
   UserClaims (..),
   userClaimsEmail,
@@ -19,10 +23,6 @@ import Sam.Auth.JWT.Types (
   userClaimsName,
   userClaimsSub,
  )
-import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Reader (ReaderT)
-import Database.Persist.Postgresql (SqlBackend)
-import Data.Maybe (fromJust)
 
 userClaimsFromDb :: Db.Entity Db.UserClaims -> UserClaims
 userClaimsFromDb (Db.Entity (Db.UserClaimsKey userId) user) = do
@@ -42,7 +42,7 @@ userClaimsFromDb (Db.Entity (Db.UserClaimsKey userId) user) = do
     }
 
 upsertUserClaims
-  :: MonadIO m
+  :: (MonadIO m)
   => UserClaims
   -> ReaderT SqlBackend m Db.UserClaimsId
 upsertUserClaims userClaims = do

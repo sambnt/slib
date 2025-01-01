@@ -70,6 +70,7 @@ library
                     Sam.Auth.Config.OAuth
                     Sam.Auth.Config.SSM
                     Sam.Auth.Config.Session
+                    Sam.Auth.Database
                     Sam.Auth.Database.Schema
                     Sam.Auth.JWT
                     Sam.Auth.JWT.Types
