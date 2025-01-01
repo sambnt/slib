@@ -11,9 +11,7 @@ import Chronos (Time)
 import Chronos qualified
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (ReaderT)
-import Data.Aeson qualified as Aeson
-import Data.ByteString.Lazy qualified as BSL
-import Data.Maybe (fromJust, fromMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Text.Encoding qualified as T
 import Database.Esqueleto.Experimental ((=.), (==.), (^.))
 import Database.Esqueleto.Experimental qualified as Db
@@ -21,13 +19,6 @@ import Database.Persist.Class qualified as P
 import Database.Persist.Sql (SqlBackend)
 import Debug.Trace qualified as Debug
 import Sam.Auth.Database.Schema qualified as Db
-import Sam.Auth.JWT.Types (
-  UserClaims (..),
-  userClaimsEmail,
-  userClaimsEmailVerified,
-  userClaimsName,
-  userClaimsSub,
- )
 import Sam.Auth.Session.Types (
   Anonymous (..),
   Authenticated (Authenticated),
@@ -47,6 +38,7 @@ import Sam.Auth.Session.Types (
  )
 import Sam.Util.URI (parseURI, uriToStr)
 import Torsor qualified
+import Sam.Auth.Database qualified as Db
 
 mkSessionStoreDb
   :: (MonadIO m)
@@ -128,7 +120,7 @@ authenticateSessionDb cfg oldSessionId ns = do
 
           let authData = newSessionData ns
 
-          userId <- upsertUser $ authUserClaims authData
+          userId <- Db.upsertUserClaims $ authUserClaims authData
 
           -- Create a new, authenticated session
           Db.insertKey newSessionKey $
@@ -192,7 +184,7 @@ getSessionDb cfg gs = do
                       SessionAuthenticated
                         sd
                           { sessionData =
-                              Authenticated $ userFromDb (Db.Entity userId user)
+                              Authenticated $ Db.userClaimsFromDb (Db.Entity userId user)
                           , sessionExpiresAt = Torsor.add (sessionTimeoutIdle cfg) currentTime
                           }
 
@@ -206,21 +198,9 @@ endSessionDb _ sesh = P.delete (toDbSessionId $ endSessionId sesh)
 toDbSessionId :: SessionId -> Db.SessionId
 toDbSessionId (SessionId sid) = Db.SessionKey sid
 
-upsertUser :: (MonadIO m) => UserClaims -> ReaderT SqlBackend m Db.UserId
-upsertUser userClaims = do
-  let
-    userId = Db.UserKey $ userClaimsSub userClaims
-    name = userClaimsName userClaims
-    email = userClaimsEmail userClaims
-    emailVerified = userClaimsEmailVerified userClaims
-    claimsJSON = T.decodeUtf8 . BSL.toStrict . Aeson.encode $ jwtClaims userClaims
-    user = Db.User name email emailVerified claimsJSON
-  Db.repsert userId user
-  pure userId
-
 sessionFromDb
   :: Db.Entity Db.Session
-  -> Session Anonymous Db.UserId
+  -> Session Anonymous Db.UserClaimsId
 sessionFromDb (Db.Entity (Db.SessionKey sid) sessionDb) = do
   let
     mkSessionData a =
@@ -252,23 +232,6 @@ sessionFromDb (Db.Entity (Db.SessionKey sid) sessionDb) = do
               }
     Just userId ->
       SessionAuthenticated $ mkSessionData userId
-
-userFromDb :: Db.Entity Db.User -> UserClaims
-userFromDb (Db.Entity (Db.UserKey userId) user) = do
-  let
-    claims =
-      fromJust $
-        Aeson.decode $
-          BSL.fromStrict $
-            T.encodeUtf8 $
-              Db.userClaims user
-  UserClaims
-    { jwtClaims = claims
-    , userClaimsEmail = Db.userEmail user
-    , userClaimsEmailVerified = Db.userEmailVerified user
-    , userClaimsName = Db.userName user
-    , userClaimsSub = userId
-    }
 
 touchSession
   :: (MonadIO m)

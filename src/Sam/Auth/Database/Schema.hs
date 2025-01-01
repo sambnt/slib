@@ -46,12 +46,12 @@ Session
   Id Text
   codeVerifier Text Maybe
   redirectTo Text Maybe
-  user UserId Maybe
+  user UserClaimsId Maybe
   createdAt Int64
   expiresAt Int64
   deriving Show
 
-User
+UserClaims
   Id Text
   name Text
   email Text
