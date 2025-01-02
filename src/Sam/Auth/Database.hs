@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeApplications #-}
+
 {-|
 Module                  : Sam.Auth.Database
 Copyright               : (c) 2024-2025 Samuel Evans-Powell
@@ -14,6 +15,7 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BSL
 import Data.Maybe (fromJust)
 import Data.Text.Encoding qualified as T
+import Database.Esqueleto.Experimental (from, select, table)
 import Database.Esqueleto.Experimental qualified as Db
 import Database.Persist.Postgresql (SqlBackend)
 import Sam.Auth.Database.Schema qualified as Db
@@ -24,9 +26,8 @@ import Sam.Auth.JWT.Types (
   userClaimsName,
   userClaimsSub,
  )
-import Database.Esqueleto.Experimental (select, from, table)
 
-getUserClaims :: MonadIO m => ReaderT SqlBackend m [UserClaims]
+getUserClaims :: (MonadIO m) => ReaderT SqlBackend m [UserClaims]
 getUserClaims = do
   us <- select $ do
     from $

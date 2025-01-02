@@ -45,6 +45,7 @@ share
 Session
   Id Text
   codeVerifier Text Maybe
+  csrf Text
   redirectTo Text Maybe
   user UserClaimsId Maybe
   createdAt Int64

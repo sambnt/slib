@@ -81,6 +81,37 @@ mkSessionCookies cfg = do
       , sessionSecureCookies = cfgSessionSecureCookies cfg
       }
 
+getUserBySessionId
+  :: MonadIO m
+  => SessionCookies m
+  -> SessionId
+  -> m (SessionResult (Maybe UserClaims))
+getUserBySessionId sessions sid = do
+  result <- getSessionBySessionId sessions sid
+
+  pure $ case result of
+    SessionNotFound -> SessionNotFound
+    SessionExpired -> SessionExpired
+    SessionFound (SessionAnonymous _) -> SessionFound Nothing
+    SessionFound (SessionAuthenticated sd) ->
+      SessionFound $ Just (authUserClaims $ sessionData sd)
+
+getSessionBySessionId
+  :: MonadIO m
+  => SessionCookies m
+  -> SessionId
+  -> m (SessionResult (Session Anonymous Authenticated))
+getSessionBySessionId sessions sid = do
+  let
+    cfg = sessionStoreConfig sessions
+    store = sessionStore sessions
+  t <- liftIO Chronos.now
+  Store.getSession store cfg $
+    GetSession
+      { getSessionId = sid
+      , getSessionAt = t
+      }
+
 getUser
   :: (MonadIO m)
   => SessionCookies m
@@ -102,21 +133,13 @@ getSession
   -> Maybe Cookies
   -> m (SessionResult (Session Anonymous Authenticated))
 getSession sessions mcs = do
-  let
-    cs = fromMaybe (Cookies []) mcs
-    cfg = sessionStoreConfig sessions
-    store = sessionStore sessions
-  t <- liftIO Chronos.now
+  let cs = fromMaybe (Cookies []) mcs
 
   case getSessionCookie sessions cs of
     Nothing ->
       pure SessionNotFound
     Just sid -> do
-      Store.getSession store cfg $
-        GetSession
-          { getSessionId = sid
-          , getSessionAt = t
-          }
+      getSessionBySessionId sessions sid
 
 -- TODO: Test user's previous session is destroyed
 newSession
@@ -134,11 +157,15 @@ newSession sessions mcs anon = do
       sid <-
         liftIO $
           TE.decodeUtf8Lenient . Base64.encode <$> Random.getEntropy 32
+      csrf <-
+        liftIO $
+          TE.decodeUtf8Lenient . Base64.encode <$> Random.getEntropy 32
       result <-
         Store.newSession store cfg $
           NewSession
             { newSessionId = SessionId sid
             , newSessionCreatedAt = t
+            , newSessionCSRF = csrf
             , newSessionData = anon
             }
       case result of
@@ -169,11 +196,15 @@ authenticateSession sessions oldSessionId usr = do
       sid <-
         liftIO $
           TE.decodeUtf8Lenient . Base64.encode <$> Random.getEntropy 32
+      csrf <-
+        liftIO $
+          TE.decodeUtf8Lenient . Base64.encode <$> Random.getEntropy 32
       result <-
         Store.authenticateSession store cfg oldSessionId $
           NewSession
             { newSessionId = SessionId sid
             , newSessionCreatedAt = t
+            , newSessionCSRF = csrf
             , newSessionData = Authenticated usr
             }
       maybe loopUntilUniqueSession pure result

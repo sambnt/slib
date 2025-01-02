@@ -43,6 +43,8 @@ import Sam.Auth.Session.Cookies (
 import Sam.Auth.Session.Types (
   Session (..),
   SessionResult (..),
+  SessionData,
+  Authenticated,
   anonSessionRedirect,
   sessionData,
   sessionId,
@@ -108,7 +110,8 @@ data AuthRoutes mode = AuthRoutes
   }
   deriving (Generic)
 
-type instance AuthServerData (AuthProtect "cookie-auth") = UserClaims
+type instance AuthServerData (AuthProtect "cookie-auth") =
+  SessionData Authenticated
 
 api :: Proxy (ToServantApi AuthRoutes)
 api = genericApi (Proxy :: Proxy AuthRoutes)

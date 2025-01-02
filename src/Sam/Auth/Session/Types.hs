@@ -22,6 +22,11 @@ type TimeoutSecondsIdle = Timespan
 newtype SessionId = SessionId Text
   deriving (Eq, Show)
 
+type CSRF = Text
+
+unSessionId :: SessionId -> Text
+unSessionId (SessionId sid) = sid
+
 data SessionResult a
   = SessionExpired
   | SessionNotFound
@@ -56,6 +61,7 @@ data SessionData a = SessionData
   { sessionId :: SessionId
   , sessionExpiresAt :: Time
   , sessionCreatedAt :: Time
+  , sessionCSRF :: CSRF
   , sessionData :: a
   }
   deriving (Eq, Show)
@@ -63,6 +69,7 @@ data SessionData a = SessionData
 data NewSession a = NewSession
   { newSessionId :: SessionId
   , newSessionCreatedAt :: Time
+  , newSessionCSRF :: CSRF
   , newSessionData :: a
   }
   deriving (Eq, Show)

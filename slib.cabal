@@ -40,6 +40,7 @@ library
                   , http-api-data
                   , http-client
                   , http-client-tls
+                  , http-types
                   , jose
                   , lens
                   , lucid2
@@ -78,6 +79,9 @@ library
                     Sam.Auth.Session
                     Sam.Auth.Session.Cookies
                     Sam.Auth.Session.Types
+                    Sam.Auth.Middleware.Authentication
+                    Sam.Auth.Middleware.CSRF
+                    Sam.Util.Htmx
                     Sam.Util.Postgres
                     Sam.Util.URI
 

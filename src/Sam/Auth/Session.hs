@@ -70,6 +70,7 @@ newSessionDb cfg ns = do
       Db.insertKey (toDbSessionId seshId) $
         Db.Session
           (Just codeVerifierTxt)
+          (newSessionCSRF ns)
           (uriToStr <$> anonSessionRedirect anonData)
           Nothing
           (Chronos.getTime createdAt)
@@ -80,6 +81,7 @@ newSessionDb cfg ns = do
             { sessionId = newSessionId ns
             , sessionExpiresAt = expiresAt
             , sessionCreatedAt = createdAt
+            , sessionCSRF = newSessionCSRF ns
             , sessionData = anonData
             }
 
@@ -126,6 +128,7 @@ authenticateSessionDb cfg oldSessionId ns = do
           Db.insertKey newSessionKey $
             Db.Session
               Nothing
+              (newSessionCSRF ns)
               Nothing
               (Just userId)
               (Chronos.getTime createdAt)
@@ -138,6 +141,7 @@ authenticateSessionDb cfg oldSessionId ns = do
                   { sessionId = newSessionId ns
                   , sessionExpiresAt = expiresAt
                   , sessionCreatedAt = createdAt
+                  , sessionCSRF = newSessionCSRF ns
                   , sessionData = authData
                   }
 
@@ -208,6 +212,7 @@ sessionFromDb (Db.Entity (Db.SessionKey sid) sessionDb) = do
         { sessionId = SessionId sid
         , sessionExpiresAt = Chronos.Time $ Db.sessionExpiresAt sessionDb
         , sessionCreatedAt = Chronos.Time $ Db.sessionCreatedAt sessionDb
+        , sessionCSRF = Db.sessionCsrf sessionDb
         , sessionData = a
         }
   case Db.sessionUser sessionDb of
