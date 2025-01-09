@@ -1,10 +1,10 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DeriveAnyClass #-}
 
 {-|
 Module                  : Main
@@ -35,8 +35,12 @@ module Main where
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Logger (runStdoutLoggingT)
 import Control.Monad.Reader (ReaderT)
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Function ((&))
 import Data.Pool (Pool)
 import Data.String (fromString)
+import Data.Text (Text)
+import Data.Text.Encoding qualified as T
 import Database.Persist.Postgresql (withPostgresqlPool)
 import Database.Persist.Sql (SqlBackend, runSqlPool)
 import GHC.Generics (Generic)
@@ -44,47 +48,48 @@ import Lucid (
   Html,
   a_,
   body_,
-  input_,
-  type_,
-  id_,
-  form_,
-  placeholder_,
-  required_,
   button_,
   charset_,
   content_,
   doctype_,
+  form_,
   h1_,
+  h3_,
   head_,
   header_,
   href_,
   html_,
+  id_,
+  input_,
   main_,
   meta_,
   name_,
   p_,
-  title_, h3_,
+  placeholder_,
+  required_,
+  title_,
+  type_,
  )
 import Network.HTTP.Client.TLS (newTlsManagerWith, tlsManagerSettings)
 import Network.Wai (Application, Request, requestHeaders)
 import Network.Wai.Handler.Warp (run)
 import Sam.Auth.Config.JWT (envConfigJWT)
 import Sam.Auth.Config.OAuth (envConfigOAuth)
-import Sam.Util.Htmx (hxHeaders_, useHtmxVersion, useHtmxJsExt, hxPut_, hxExt_)
 import Sam.Auth.Config.Session (envConfigSession)
 import Sam.Auth.Database.Schema qualified as Db
 import Sam.Auth.JWT (mkJWKSCache)
-import Sam.Auth.OAuth (mkOAuth)
-import Sam.Auth.Middleware.CSRF (csrfMiddleware, defaultCSRFPolicy)
 import Sam.Auth.Middleware.Authentication (authenticationMiddleware)
-import Data.Function ((&))
-import Sam.Auth.Session.Cookies (
-  Cookies (..),
-  SessionCookies,
-  getUser,
-  mkSessionCookies,
+import Sam.Auth.Middleware.CSRF (csrfMiddleware, defaultCSRFPolicy)
+import Sam.Auth.OAuth (mkOAuth)
+import Sam.Auth.Session.Cookies (Cookies (..), SessionCookies, getSessionBySessionId, getUser, mkSessionCookies)
+import Sam.Auth.Session.Types (
+  Authenticated,
+  Session (SessionAnonymous, SessionAuthenticated),
+  SessionData (sessionCSRF, sessionData),
+  SessionId (SessionId),
+  SessionResult (SessionExpired, SessionFound, SessionNotFound),
  )
-import Sam.Auth.Session.Types (Session (SessionAnonymous, SessionAuthenticated), SessionResult (SessionNotFound, SessionExpired, SessionFound), SessionId(SessionId), SessionData(sessionData, sessionCSRF), Authenticated)
+import Sam.Util.Htmx (hxExt_, hxHeaders_, hxPut_, useHtmxJsExt, useHtmxVersion)
 import Sam.Util.Postgres (withTemporaryDatabase)
 import Servant (
   Context (EmptyContext, (:.)),
@@ -92,17 +97,23 @@ import Servant (
   Handler,
   Header,
   Proxy (Proxy),
-  (:>), throwError,
+  throwError,
+  (:>),
  )
-import Servant.API (AuthProtect, NamedRoutes, ToServantApi, genericApi, (:-), ReqBody, JSON, Put)
+import Servant.API (
+  AuthProtect,
+  JSON,
+  NamedRoutes,
+  Put,
+  ReqBody,
+  ToServantApi,
+  genericApi,
+  (:-),
+ )
 import Servant.API.ContentTypes.Lucid (HTML)
-import Data.Text (Text)
-import Data.Aeson (ToJSON, FromJSON)
+import Servant.Server (err404)
 import Servant.Server.Experimental.Auth (AuthHandler, mkAuthHandler)
 import Servant.Server.Generic (AsServer, genericServeTWithContext)
-import Servant.Server (err404)
-import qualified Data.Text.Encoding as T
-import Sam.Auth.Session.Cookies (getSessionBySessionId)
 
 data Routes mode = Routes
   { publicRoutes :: mode :- NamedRoutes PublicRoutes
@@ -122,7 +133,7 @@ data ProtectedRoutes mode = ProtectedRoutes
   }
   deriving (Generic)
 
-data FormBody = FormBody { name :: Text }
+data FormBody = FormBody {name :: Text}
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 apiServer
@@ -184,36 +195,40 @@ treasureHandler _pool session =
   pure $ page $ do
     p_ [] (fromString $ "Treasure for " <> show (sessionData session))
     h3_ [] "Form with CSRF:"
-    form_ [ hxPut_ "/form"
-          , hxHeaders_ $ "{\"X-CSRF-TOKEN\": \"" <> sessionCSRF session <> "\"}"
-          , hxExt_ "json-enc"
-          ] $ do
-      input_
-        [ type_ "text"
-        , name_ "name"
-        , id_ "name"
-        , placeholder_ "Type name"
-        , required_ ""
-        ]
-      button_
-        [ type_ "submit"
-        ]
-        "Submit"
+    form_
+      [ hxPut_ "/form"
+      , hxHeaders_ $ "{\"X-CSRF-TOKEN\": \"" <> sessionCSRF session <> "\"}"
+      , hxExt_ "json-enc"
+      ]
+      $ do
+        input_
+          [ type_ "text"
+          , name_ "name"
+          , id_ "name"
+          , placeholder_ "Type name"
+          , required_ ""
+          ]
+        button_
+          [ type_ "submit"
+          ]
+          "Submit"
     h3_ [] "Form without CSRF:"
-    form_ [ hxPut_ "/form"
-          , hxExt_ "json-enc"
-          ] $ do
-      input_
-        [ type_ "text"
-        , name_ "name"
-        , id_ "name"
-        , placeholder_ "Type name"
-        , required_ ""
-        ]
-      button_
-        [ type_ "submit"
-        ]
-        "Submit"
+    form_
+      [ hxPut_ "/form"
+      , hxExt_ "json-enc"
+      ]
+      $ do
+        input_
+          [ type_ "text"
+          , name_ "name"
+          , id_ "name"
+          , placeholder_ "Type name"
+          , required_ ""
+          ]
+        button_
+          [ type_ "submit"
+          ]
+          "Submit"
 
 formHandler
   :: Pool SqlBackend
@@ -248,8 +263,10 @@ authHandler sessions pool =
         Nothing -> do
           throwError err404
         Just sessionId -> do
-          mUser <- liftIO $ flip runSqlPool pool $
-            getSessionBySessionId sessions (SessionId $ T.decodeUtf8 sessionId)
+          mUser <-
+            liftIO $
+              flip runSqlPool pool $
+                getSessionBySessionId sessions (SessionId $ T.decodeUtf8 sessionId)
           case mUser of
             SessionNotFound ->
               throwError err404
@@ -261,7 +278,7 @@ authHandler sessions pool =
               -- If you have your own User type, here is where you can add that
               -- user to the database, using the UserClaims in the SessionData.
               pure sd
-  in
+   in
     mkAuthHandler handler
 
 main :: IO ()
@@ -279,7 +296,8 @@ main = do
   withTemporaryDatabase Db.migrateAll $ \conn ->
     runStdoutLoggingT $
       withPostgresqlPool conn 3 $ \pool -> do
-        liftIO $ run 8082 $
-          app sessionCookies pool
-          & csrfMiddleware defaultCSRFPolicy sessionCookies pool
-          & authenticationMiddleware oauth sessionCookies jwks pool
+        liftIO $
+          run 8082 $
+            app sessionCookies pool
+              & csrfMiddleware defaultCSRFPolicy sessionCookies pool
+              & authenticationMiddleware oauth sessionCookies jwks pool

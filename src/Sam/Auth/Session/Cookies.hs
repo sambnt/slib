@@ -82,7 +82,7 @@ mkSessionCookies cfg = do
       }
 
 getUserBySessionId
-  :: MonadIO m
+  :: (MonadIO m)
   => SessionCookies m
   -> SessionId
   -> m (SessionResult (Maybe UserClaims))
@@ -97,7 +97,7 @@ getUserBySessionId sessions sid = do
       SessionFound $ Just (authUserClaims $ sessionData sd)
 
 getSessionBySessionId
-  :: MonadIO m
+  :: (MonadIO m)
   => SessionCookies m
   -> SessionId
   -> m (SessionResult (Session Anonymous Authenticated))

@@ -47,9 +47,9 @@ import Sam.Auth.Session.Types (
   Session (..),
   SessionResult (..),
   anonSessionRedirect,
-  unSessionId,
   sessionData,
   sessionId,
+  unSessionId,
  )
 import Sam.Util.URI (URI, uriToStr)
 import Web.Cookie (parseCookies, renderSetCookieBS)
