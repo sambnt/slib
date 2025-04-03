@@ -56,7 +56,6 @@ import Servant (
   Header,
   Proxy (Proxy),
   err302,
-  err404,
   err500,
   errBody,
   errHeaders,
@@ -276,7 +275,7 @@ authHandler oauth sessions pool =
         SessionExpired ->
           beginSession oauth sessions pool cookies uri
         SessionFound Nothing -> do
-          throwError err404
+          beginSession oauth sessions pool cookies uri
         SessionFound (Just user) -> do
           pure user
    in
