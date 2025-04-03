@@ -17,7 +17,6 @@ import Database.Esqueleto.Experimental ((=.), (==.), (^.))
 import Database.Esqueleto.Experimental qualified as Db
 import Database.Persist.Class qualified as P
 import Database.Persist.Sql (SqlBackend)
-import Debug.Trace qualified as Debug
 import Sam.Auth.Database qualified as Db
 import Sam.Auth.Database.Schema qualified as Db
 import Sam.Auth.Session.Types (
@@ -220,10 +219,8 @@ sessionFromDb (Db.Entity (Db.SessionKey sid) sessionDb) = do
       let
         redirect = do
           uriStr <-
-            Debug.trace ("AAA: " <> show sessionDb) $ Db.sessionRedirectTo sessionDb
-          case Debug.trace
-            ("BBB: " <> show (parseURI (T.encodeUtf8 uriStr)))
-            (parseURI (T.encodeUtf8 uriStr)) of
+            Db.sessionRedirectTo sessionDb
+          case parseURI (T.encodeUtf8 uriStr) of
             Left _ -> Nothing
             Right uri -> Just uri
         codeVerifier =
