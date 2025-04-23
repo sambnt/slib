@@ -258,7 +258,7 @@ defaultSessionCookie sessions =
     , setCookieSameSite = Just sameSiteLax
     , -- Restrict cookie to just this server
       setCookieDomain = Nothing
-    , -- Expire after 1 hour
+    , -- Expire after absolute timeout
       setCookieMaxAge = Just $ fromIntegral $ Chronos.getTimespan $ sessionTimeoutAbsolute $ sessionStoreConfig sessions
     , -- TODO: Give option for these
       setCookieSecure = isSecure $ sessionSecureCookies sessions
