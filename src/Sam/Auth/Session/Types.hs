@@ -48,12 +48,12 @@ data SessionConfig
 isExpired :: SessionConfig -> Time -> SessionData a -> Bool
 isExpired cfg currentTime session =
   let
-    idleExpired =
+    absoluteExpired =
       currentTime
         >= Torsor.add
           (sessionTimeoutAbsolute cfg)
           (sessionCreatedAt session)
-    absoluteExpired = currentTime >= sessionExpiresAt session
+    idleExpired = currentTime >= sessionExpiresAt session
    in
     idleExpired || absoluteExpired
 
