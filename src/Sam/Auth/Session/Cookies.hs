@@ -259,7 +259,12 @@ defaultSessionCookie sessions =
     , -- Restrict cookie to just this server
       setCookieDomain = Nothing
     , -- Expire after absolute timeout
-      setCookieMaxAge = Just $ fromIntegral $ Chronos.getTimespan $ sessionTimeoutAbsolute $ sessionStoreConfig sessions
+      setCookieMaxAge =
+        Just $
+          fromIntegral $
+            Chronos.getTimespan $
+              sessionTimeoutAbsolute $
+                sessionStoreConfig sessions
     , -- TODO: Give option for these
       setCookieSecure = isSecure $ sessionSecureCookies sessions
     , setCookiePath = Just "/"
