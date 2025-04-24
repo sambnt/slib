@@ -24,6 +24,7 @@ import Data.Text.Encoding qualified as TE
 import Database.Persist.Sql (SqlBackend)
 import Sam.Auth.Config.Session (ConfigSession (..), IsSecure, isSecure)
 import Sam.Auth.JWT.Types (UserClaims)
+import Data.Int (Int64)
 import Sam.Auth.Session (mkSessionStoreDb)
 import Sam.Auth.Session.Types (
   Anonymous,
@@ -262,10 +263,18 @@ defaultSessionCookie sessions =
       setCookieMaxAge =
         Just $
           fromIntegral $
-            Chronos.getTimespan $
+            getTimespanSeconds $
               sessionTimeoutAbsolute $
                 sessionStoreConfig sessions
     , -- TODO: Give option for these
       setCookieSecure = isSecure $ sessionSecureCookies sessions
     , setCookiePath = Just "/"
     }
+
+getTimespanSeconds :: Chronos.Timespan -> Int64
+getTimespanSeconds t =
+  let
+    tnano = Chronos.getTimespan t
+    tnano1 = Chronos.getTimespan Chronos.second
+  in
+    tnano `div` tnano1
